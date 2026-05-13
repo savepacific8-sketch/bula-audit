@@ -15,6 +15,7 @@ import Team from '@/pages/Team';
 import CompanyProfile from '@/pages/CompanyProfile';
 import Onboarding from '@/pages/Onboarding';
 import UploadReceipt from '@/pages/UploadReceipt';
+import ReceiptReview from '@/pages/ReceiptReview';
 
 const AppContent = () => {
   const { company, loading, refreshContext } = useCompany();
@@ -43,6 +44,7 @@ const AppContent = () => {
         <Route path="/team" element={<Team />} />
         <Route path="/company" element={<CompanyProfile />} />
         <Route path="/upload" element={<UploadReceipt />} />
+        <Route path="/receipt-review" element={<ReceiptReview />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

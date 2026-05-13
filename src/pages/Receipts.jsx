@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import ReceiptCard from '@/components/receipts/ReceiptCard';
-import ReceiptDetailModal from '@/components/receipts/ReceiptDetailModal';
 import UploadReceiptModal from '@/components/receipts/UploadReceiptModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Receipts() {
   const { company, canUpload } = useCompany();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showUpload, setShowUpload] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -85,18 +85,12 @@ export default function Receipts() {
       ) : (
         <div className="space-y-3">
           {filtered.map(r => (
-            <ReceiptCard key={r.id} receipt={r} onClick={setSelectedReceipt} />
+            <ReceiptCard key={r.id} receipt={r} onClick={() => navigate(`/receipt-review?id=${r.id}`)} />
           ))}
         </div>
       )}
 
       <UploadReceiptModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={refresh} />
-      <ReceiptDetailModal
-        receipt={selectedReceipt}
-        open={!!selectedReceipt}
-        onClose={() => setSelectedReceipt(null)}
-        onUpdate={refresh}
-      />
     </div>
   );
 }
