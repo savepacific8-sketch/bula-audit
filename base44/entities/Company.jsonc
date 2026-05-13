@@ -10,6 +10,19 @@
       "type": "string",
       "description": "Tax Identification Number"
     },
+    "business_type": {
+      "type": "string",
+      "enum": [
+        "sole_trader",
+        "partnership",
+        "limited_company",
+        "cooperative",
+        "ngo",
+        "government",
+        "other"
+      ],
+      "description": "Type of business entity"
+    },
     "phone": {
       "type": "string",
       "description": "Phone number"
