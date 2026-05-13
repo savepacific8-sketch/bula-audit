@@ -14,6 +14,42 @@ import {
   Sparkles, AlertTriangle, RotateCcw, Save
 } from 'lucide-react';
 
+const VAT_TYPES = [
+  { value: 'inclusive',  label: 'VAT Inclusive' },
+  { value: 'exclusive',  label: 'VAT Exclusive' },
+  { value: 'zero_rated', label: 'Zero-rated' },
+  { value: 'exempt',     label: 'VAT Exempt' },
+  { value: 'no_vat',     label: 'No VAT Shown' },
+  { value: 'manual',     label: 'Manual' },
+];
+
+const r2 = (n) => Math.round(n * 100) / 100;
+
+// Returns updated { subtotal, vat_rate, vat_amount, total_amount } based on vat_type
+function applyVatLogic(vat_type, current) {
+  const sub   = parseFloat(current.subtotal)    || 0;
+  const total = parseFloat(current.total_amount) || 0;
+  const rate  = parseFloat(current.vat_rate)     || 12.5;
+
+  if (vat_type === 'exclusive') {
+    const vat = r2(sub * (rate / 100));
+    return { vat_amount: vat, total_amount: r2(sub + vat) };
+  }
+  if (vat_type === 'inclusive') {
+    const vat     = r2(total * 12.5 / 112.5);
+    const subtotal = r2(total - vat);
+    return { vat_amount: vat, subtotal };
+  }
+  if (vat_type === 'zero_rated') {
+    return { vat_rate: 0, vat_amount: 0, total_amount: r2(sub) };
+  }
+  if (vat_type === 'exempt' || vat_type === 'no_vat') {
+    return { vat_rate: '', vat_amount: '', total_amount: r2(sub) };
+  }
+  // manual — no auto-calc
+  return {};
+}
+
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
   'equipment', 'repairs_maintenance', 'professional_services', 'marketing',
@@ -52,6 +88,7 @@ export default function ReceiptReview() {
         receipt_date:     r.receipt_date     || '',
         currency:         r.currency         || 'FJD',
         subtotal:         r.subtotal         ?? '',
+        vat_type:         r.vat_type         || 'inclusive',
         vat_rate:         r.vat_rate         ?? 12.5,
         vat_amount:       r.vat_amount       ?? '',
         total_amount:     r.total_amount     ?? '',
@@ -65,6 +102,25 @@ export default function ReceiptReview() {
 
   const field = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
+  const handleVatTypeChange = (vat_type) => {
+    setForm(prev => {
+      const updates = applyVatLogic(vat_type, prev);
+      return { ...prev, vat_type, ...updates };
+    });
+  };
+
+  // When a number field changes, recalc if vat_type is exclusive or inclusive
+  const handleAmountChange = (key, val) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: val };
+      if (next.vat_type === 'exclusive' || next.vat_type === 'inclusive') {
+        const updates = applyVatLogic(next.vat_type, next);
+        return { ...next, ...updates };
+      }
+      return next;
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     await base44.entities.Receipt.update(receipt.id, {
@@ -73,6 +129,7 @@ export default function ReceiptReview() {
       receipt_number: form.receipt_number || undefined,
       receipt_date:   form.receipt_date   || undefined,
       currency:       form.currency       || 'FJD',
+      vat_type:       form.vat_type       || undefined,
       subtotal:       form.subtotal !== '' ? Number(form.subtotal) : undefined,
       vat_rate:       form.vat_rate !== '' ? Number(form.vat_rate) : undefined,
       vat_amount:     form.vat_amount !== '' ? Number(form.vat_amount) : undefined,
@@ -109,6 +166,7 @@ export default function ReceiptReview() {
       receipt_number: result.receipt_number || '',
       receipt_date:   result.receipt_date   || '',
       currency:       result.currency       || 'FJD',
+      vat_type:       result.vat_type       || prev.vat_type || 'inclusive',
       subtotal:       result.subtotal       ?? '',
       vat_rate:       result.vat_rate       ?? 12.5,
       vat_amount:     result.vat_amount     ?? '',
@@ -242,25 +300,76 @@ export default function ReceiptReview() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          {/* VAT Type */}
+          <div className="space-y-1">
+            <Label className="text-xs">VAT Type</Label>
+            <Select value={form.vat_type} onValueChange={handleVatTypeChange}>
+              <SelectTrigger><SelectValue placeholder="Select VAT type…" /></SelectTrigger>
+              <SelectContent>
+                {VAT_TYPES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Subtotal: user-entered for exclusive; auto-calc for inclusive */}
             <div className="space-y-1">
-              <Label className="text-xs">Subtotal</Label>
-              <Input type="number" value={form.subtotal} onChange={e => field('subtotal', e.target.value)} placeholder="0.00" />
+              <Label className="text-xs">
+                Subtotal
+                {form.vat_type === 'inclusive' && <span className="ml-1 text-muted-foreground">(auto)</span>}
+              </Label>
+              <Input
+                type="number"
+                value={form.subtotal}
+                onChange={e => handleAmountChange('subtotal', e.target.value)}
+                placeholder="0.00"
+                readOnly={form.vat_type === 'inclusive'}
+                className={form.vat_type === 'inclusive' ? 'bg-muted text-muted-foreground' : ''}
+              />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs">VAT Rate (%)</Label>
-              <Input type="number" value={form.vat_rate} onChange={e => field('vat_rate', e.target.value)} placeholder="12.5" />
+              <Input
+                type="number"
+                value={form.vat_rate}
+                onChange={e => handleAmountChange('vat_rate', e.target.value)}
+                placeholder="12.5"
+                readOnly={form.vat_type === 'zero_rated' || form.vat_type === 'exempt' || form.vat_type === 'no_vat'}
+                className={(form.vat_type === 'zero_rated' || form.vat_type === 'exempt' || form.vat_type === 'no_vat') ? 'bg-muted text-muted-foreground' : ''}
+              />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">VAT Amount</Label>
-              <Input type="number" value={form.vat_amount} onChange={e => field('vat_amount', e.target.value)} placeholder="0.00" />
+              <Label className="text-xs">
+                VAT Amount
+                {(form.vat_type === 'inclusive' || form.vat_type === 'exclusive') && <span className="ml-1 text-muted-foreground">(auto)</span>}
+              </Label>
+              <Input
+                type="number"
+                value={form.vat_amount}
+                onChange={e => field('vat_amount', e.target.value)}
+                placeholder="0.00"
+                readOnly={form.vat_type === 'inclusive' || form.vat_type === 'exclusive'}
+                className={(form.vat_type === 'inclusive' || form.vat_type === 'exclusive') ? 'bg-muted text-muted-foreground' : ''}
+              />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Total Amount</Label>
-              <Input type="number" value={form.total_amount} onChange={e => field('total_amount', e.target.value)} placeholder="0.00" className="font-semibold" />
+              <Label className="text-xs font-semibold">
+                Total Amount
+                {form.vat_type === 'exclusive' && <span className="ml-1 text-muted-foreground font-normal">(auto)</span>}
+              </Label>
+              <Input
+                type="number"
+                value={form.total_amount}
+                onChange={e => handleAmountChange('total_amount', e.target.value)}
+                placeholder="0.00"
+                readOnly={form.vat_type === 'exclusive'}
+                className={form.vat_type === 'exclusive' ? 'bg-muted text-muted-foreground font-semibold' : 'font-semibold'}
+              />
             </div>
           </div>
 

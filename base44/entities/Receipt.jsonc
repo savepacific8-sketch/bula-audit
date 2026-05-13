@@ -35,6 +35,19 @@
       "type": "number",
       "description": "Subtotal before VAT"
     },
+    "vat_type": {
+      "type": "string",
+      "enum": [
+        "inclusive",
+        "exclusive",
+        "zero_rated",
+        "exempt",
+        "no_vat",
+        "manual"
+      ],
+      "default": "inclusive",
+      "description": "How VAT is applied on this receipt"
+    },
     "vat_rate": {
       "type": "number",
       "description": "VAT rate percentage"
