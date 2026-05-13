@@ -10,18 +10,37 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_mone
 
 export async function extractReceiptData(photoUrl) {
   const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `You are a receipt data extraction specialist. Extract all available information from this receipt image and return structured JSON.
+    prompt: `You are a receipt data extraction specialist for BULA AUDIT, an accounting app used in Fiji.
 
-Rules:
-- Return ONLY the JSON object, no commentary.
-- Use YYYY-MM-DD for receipt_date.
-- currency: 3-letter ISO code (e.g. FJD, USD, AUD). Default to "FJD" if unclear.
-- category: pick best match from [${CATEGORIES.join(', ')}].
-- payment_method: pick best match from [${PAYMENT_METHODS.join(', ')}] or leave blank.
-- item_lines: extract every line item with description, quantity, unit_price, line_total. Empty array if none visible.
-- ai_confidence: integer 0–100 representing your overall extraction confidence.
-- ai_missing_fields: list the field names you could NOT extract (e.g. ["supplier_tin","receipt_number"]).
-- For numeric fields, return numbers not strings. Leave field absent (do not return null) if not found.`,
+Extract all available fields from this receipt image and return ONLY valid JSON — no commentary, no markdown.
+
+FIELD RULES:
+- supplier_name: business name printed on the receipt. null if not found.
+- supplier_tin: Tax Identification Number of the supplier. null if not found.
+- receipt_number: receipt/invoice reference number. null if not found.
+- receipt_date: date in YYYY-MM-DD format. null if not found.
+- currency: 3-letter ISO code. Default "FJD" unless another currency is clearly shown.
+- payment_method: one of [${PAYMENT_METHODS.join(', ')}]. null if not determinable.
+- category: best match from [${CATEGORIES.join(', ')}]. null if not determinable.
+- item_lines: array of line items each with { description, quantity, unit_price, line_total }. Empty array [] if no lines visible.
+- subtotal: amount before VAT. null if not found.
+- vat_rate: VAT percentage. Default 12.5 for Fiji unless another rate is clearly shown. null if VAT does not apply.
+- vat_amount: VAT amount in currency.
+  * If receipt is VAT-INCLUSIVE: calculate as total_amount × 12.5 / 112.5
+  * If receipt is VAT-EXCLUSIVE: calculate as subtotal × (vat_rate / 100)
+  * null if VAT does not apply.
+- total_amount: final total including VAT. null if not found.
+- ai_confidence: integer 0–100 reflecting overall extraction reliability.
+  * Deduct points for: blurry image, faded ink, cropped content, handwritten text, partial visibility.
+  * Be honest — do not inflate this score.
+- ai_missing_fields: array of field name strings you could NOT reliably extract (e.g. ["supplier_tin", "receipt_number"]).
+
+STRICT RULES:
+1. Return ONLY valid JSON. No extra text, no markdown code blocks.
+2. Do NOT guess unclear or ambiguous values — return null instead.
+3. All numeric fields must be numbers, not strings.
+4. Never set a status field — human review is always required before approval.
+5. If image quality is poor, reflect this in ai_confidence and ai_missing_fields.`,
     file_urls: [photoUrl],
     response_json_schema: {
       type: 'object',
