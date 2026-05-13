@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatFJD, formatCategory, formatPaymentMethod } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
@@ -69,20 +69,73 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
           </div>
         )}
 
+        {/* AI Extraction Summary */}
+        {(receipt.ai_confidence != null || receipt.ai_missing_fields?.length > 0) && (
+          <div className="rounded-xl bg-muted/60 border border-border p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Sparkles className="w-3.5 h-3.5" /> AI Extraction
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {receipt.ai_confidence != null && (
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full ${receipt.ai_confidence >= 80 ? 'bg-emerald-500' : receipt.ai_confidence >= 50 ? 'bg-amber-400' : 'bg-red-400'}`} />
+                  <span className="text-sm font-medium">{receipt.ai_confidence}% confidence</span>
+                </div>
+              )}
+              {receipt.ai_missing_fields?.length > 0 && (
+                <div className="flex items-center gap-1.5 text-amber-600">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span className="text-xs">Missing: {receipt.ai_missing_fields.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <Field label="Supplier" value={receipt.supplier_name} />
           <Field label="Supplier TIN" value={receipt.supplier_tin} />
           <Field label="Receipt #" value={receipt.receipt_number} />
           <Field label="Date" value={receipt.receipt_date ? format(new Date(receipt.receipt_date), 'dd MMM yyyy') : null} />
+          <Field label="Currency" value={receipt.currency} />
+          <Field label="Payment" value={formatPaymentMethod(receipt.payment_method)} />
           <Field label="Subtotal" value={formatFJD(receipt.subtotal)} />
           <Field label="VAT Rate" value={receipt.vat_rate ? `${receipt.vat_rate}%` : null} />
           <Field label="VAT Amount" value={formatFJD(receipt.vat_amount)} />
           <Field label="Total" value={formatFJD(receipt.total_amount)} />
-          <Field label="Payment" value={formatPaymentMethod(receipt.payment_method)} />
           <Field label="Category" value={formatCategory(receipt.category)} />
           <Field label="Uploaded By" value={receipt.uploaded_by} />
-          <Field label="Reviewed By" value={receipt.reviewed_by} />
+          {receipt.reviewed_by && <Field label="Reviewed By" value={receipt.reviewed_by} />}
         </div>
+
+        {/* Line Items */}
+        {receipt.item_lines?.length > 0 && (
+          <div>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-2">Line Items</p>
+            <div className="rounded-lg border border-border overflow-hidden text-xs">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Description</th>
+                    <th className="text-right px-3 py-2 font-medium">Qty</th>
+                    <th className="text-right px-3 py-2 font-medium">Unit</th>
+                    <th className="text-right px-3 py-2 font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receipt.item_lines.map((line, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className="px-3 py-2">{line.description || '—'}</td>
+                      <td className="px-3 py-2 text-right">{line.quantity ?? '—'}</td>
+                      <td className="px-3 py-2 text-right">{line.unit_price != null ? formatFJD(line.unit_price) : '—'}</td>
+                      <td className="px-3 py-2 text-right font-medium">{line.line_total != null ? formatFJD(line.line_total) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {receipt.notes && (
           <div>

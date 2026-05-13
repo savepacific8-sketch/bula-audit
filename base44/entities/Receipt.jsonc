@@ -27,6 +27,10 @@
       "format": "date",
       "description": "Date on the receipt"
     },
+    "currency": {
+      "type": "string",
+      "description": "Currency code (e.g. FJD, USD)"
+    },
     "subtotal": {
       "type": "number",
       "description": "Subtotal before VAT"
@@ -75,6 +79,38 @@
         "other"
       ],
       "description": "Expense category"
+    },
+    "item_lines": {
+      "type": "array",
+      "description": "Line items extracted from the receipt",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "line_total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "ai_confidence": {
+      "type": "number",
+      "description": "AI extraction confidence score 0\u2013100"
+    },
+    "ai_missing_fields": {
+      "type": "array",
+      "description": "Fields the AI could not extract",
+      "items": {
+        "type": "string"
+      }
     },
     "status": {
       "type": "string",

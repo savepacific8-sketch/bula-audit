@@ -12,6 +12,7 @@ import {
   CheckCircle2, RotateCcw, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { extractReceiptData } from '@/lib/extractReceipt';
 
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
@@ -25,8 +26,9 @@ const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperC
 
 const EMPTY_FORM = {
   supplier_name: '', supplier_tin: '', receipt_number: '',
-  receipt_date: '', subtotal: '', vat_rate: '',
-  vat_amount: '', total_amount: '', payment_method: '', category: '', notes: ''
+  receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: '',
+  vat_amount: '', total_amount: '', payment_method: '', category: '',
+  notes: '', item_lines: [], ai_confidence: null, ai_missing_fields: []
 };
 
 export default function UploadReceipt() {
@@ -68,37 +70,23 @@ export default function UploadReceipt() {
     setStep('extract');
     setExtracting(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract the following from this receipt image. If a field is not found, leave it blank. Return values in Fiji Dollars (FJD). For the date, use YYYY-MM-DD format. For category, pick the best match from: ${CATEGORIES.join(', ')}. For payment_method pick from: ${PAYMENT_METHODS.join(', ')}.`,
-        file_urls: [photoUrl],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            supplier_name: { type: 'string' },
-            supplier_tin: { type: 'string' },
-            receipt_number: { type: 'string' },
-            receipt_date: { type: 'string' },
-            subtotal: { type: 'number' },
-            vat_rate: { type: 'number' },
-            vat_amount: { type: 'number' },
-            total_amount: { type: 'number' },
-            payment_method: { type: 'string' },
-            category: { type: 'string' }
-          }
-        }
-      });
+      const result = await extractReceiptData(photoUrl);
       setForm(prev => ({
         ...prev,
-        supplier_name: result.supplier_name || '',
-        supplier_tin: result.supplier_tin || '',
-        receipt_number: result.receipt_number || '',
-        receipt_date: result.receipt_date || '',
-        subtotal: result.subtotal || '',
-        vat_rate: result.vat_rate || company?.vat_rate || 12.5,
-        vat_amount: result.vat_amount || '',
-        total_amount: result.total_amount || '',
-        payment_method: result.payment_method || '',
-        category: result.category || '',
+        supplier_name:   result.supplier_name   || '',
+        supplier_tin:    result.supplier_tin    || '',
+        receipt_number:  result.receipt_number  || '',
+        receipt_date:    result.receipt_date    || '',
+        currency:        result.currency        || 'FJD',
+        subtotal:        result.subtotal        || '',
+        vat_rate:        result.vat_rate        || company?.vat_rate || 12.5,
+        vat_amount:      result.vat_amount      || '',
+        total_amount:    result.total_amount    || '',
+        payment_method:  result.payment_method  || '',
+        category:        result.category        || '',
+        item_lines:      result.item_lines      || [],
+        ai_confidence:   result.ai_confidence   ?? null,
+        ai_missing_fields: result.ai_missing_fields || [],
       }));
       toast.success('Receipt data extracted!');
     } catch {
@@ -128,21 +116,25 @@ export default function UploadReceipt() {
     try {
       const user = await base44.auth.me();
       await base44.entities.Receipt.create({
-        company_id: company.id,
-        photo_url: photoUrl,
-        supplier_name: form.supplier_name || undefined,
-        supplier_tin: form.supplier_tin || undefined,
-        receipt_number: form.receipt_number || undefined,
-        receipt_date: form.receipt_date || undefined,
-        subtotal: form.subtotal ? Number(form.subtotal) : undefined,
-        vat_rate: form.vat_rate ? Number(form.vat_rate) : undefined,
-        vat_amount: form.vat_amount ? Number(form.vat_amount) : undefined,
-        total_amount: form.total_amount ? Number(form.total_amount) : undefined,
-        payment_method: form.payment_method || undefined,
-        category: form.category || undefined,
-        notes: form.notes || undefined,
-        status: 'pending',
-        uploaded_by: user.email,
+        company_id:       company.id,
+        photo_url:        photoUrl,
+        supplier_name:    form.supplier_name    || undefined,
+        supplier_tin:     form.supplier_tin     || undefined,
+        receipt_number:   form.receipt_number   || undefined,
+        receipt_date:     form.receipt_date     || undefined,
+        currency:         form.currency         || 'FJD',
+        subtotal:         form.subtotal         ? Number(form.subtotal) : undefined,
+        vat_rate:         form.vat_rate         ? Number(form.vat_rate) : undefined,
+        vat_amount:       form.vat_amount       ? Number(form.vat_amount) : undefined,
+        total_amount:     form.total_amount     ? Number(form.total_amount) : undefined,
+        payment_method:   form.payment_method   || undefined,
+        category:         form.category         || undefined,
+        notes:            form.notes            || undefined,
+        item_lines:       form.item_lines?.length ? form.item_lines : undefined,
+        ai_confidence:    form.ai_confidence    ?? undefined,
+        ai_missing_fields: form.ai_missing_fields?.length ? form.ai_missing_fields : undefined,
+        status:           'pending',
+        uploaded_by:      user.email,
       });
       setStep('done');
     } catch {
