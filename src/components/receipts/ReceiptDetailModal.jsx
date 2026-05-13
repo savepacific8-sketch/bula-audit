@@ -91,7 +91,7 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
           </div>
         )}
 
-        {canApprove && receipt.status === 'pending' && (
+        {canApprove && receipt.status !== 'approved' && (
           <div className="flex gap-3 pt-2">
             <Button
               onClick={() => handleStatusChange('approved')}
@@ -101,15 +101,17 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
               {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Approve
             </Button>
-            <Button
-              onClick={() => handleStatusChange('rejected')}
-              disabled={updating}
-              variant="destructive"
-              className="flex-1 gap-2"
-            >
-              {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-              Reject
-            </Button>
+            {receipt.status === 'pending' && (
+              <Button
+                onClick={() => handleStatusChange('rejected')}
+                disabled={updating}
+                variant="destructive"
+                className="flex-1 gap-2"
+              >
+                {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                Reject
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>

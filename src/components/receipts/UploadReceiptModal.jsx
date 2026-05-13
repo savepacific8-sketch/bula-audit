@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
-import { Camera, Upload, Loader2, Sparkles } from 'lucide-react';
+import { Camera, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CATEGORIES = [
@@ -38,60 +38,55 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
+      // Auto-extract immediately after upload
       setStep('extract');
+      setExtracting(true);
+      try {
+        const result = await base44.integrations.Core.InvokeLLM({
+          prompt: `Extract the following from this receipt image. If a field is not found, leave it blank. Return values in Fiji Dollars (FJD). For the date, use YYYY-MM-DD format. For category, pick the best match from: ${CATEGORIES.join(', ')}. For payment_method pick from: ${PAYMENT_METHODS.join(', ')}.`,
+          file_urls: [file_url],
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              supplier_name: { type: 'string' },
+              supplier_tin: { type: 'string' },
+              receipt_number: { type: 'string' },
+              receipt_date: { type: 'string' },
+              subtotal: { type: 'number' },
+              vat_rate: { type: 'number' },
+              vat_amount: { type: 'number' },
+              total_amount: { type: 'number' },
+              payment_method: { type: 'string' },
+              category: { type: 'string' }
+            }
+          }
+        });
+        setForm(prev => ({
+          ...prev,
+          supplier_name: result.supplier_name || '',
+          supplier_tin: result.supplier_tin || '',
+          receipt_number: result.receipt_number || '',
+          receipt_date: result.receipt_date || '',
+          subtotal: result.subtotal || '',
+          vat_rate: result.vat_rate || company?.vat_rate || 12.5,
+          vat_amount: result.vat_amount || '',
+          total_amount: result.total_amount || '',
+          payment_method: result.payment_method || '',
+          category: result.category || '',
+        }));
+        toast.success('Receipt data extracted!');
+      } catch {
+        toast.error('Could not auto-extract. Please fill in manually.');
+      } finally {
+        setExtracting(false);
+        setStep('review');
+      }
     } catch (err) {
       toast.error('Failed to upload photo');
     } finally {
       setUploading(false);
     }
   };
-
-  const handleExtract = async () => {
-    setExtracting(true);
-    try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract the following from this receipt image. If a field is not found, leave it blank. Return values in Fiji Dollars (FJD). For the date, use YYYY-MM-DD format. For category, pick the best match from: ${CATEGORIES.join(', ')}. For payment_method pick from: ${PAYMENT_METHODS.join(', ')}.`,
-        file_urls: [photoUrl],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            supplier_name: { type: 'string' },
-            supplier_tin: { type: 'string' },
-            receipt_number: { type: 'string' },
-            receipt_date: { type: 'string' },
-            subtotal: { type: 'number' },
-            vat_rate: { type: 'number' },
-            vat_amount: { type: 'number' },
-            total_amount: { type: 'number' },
-            payment_method: { type: 'string' },
-            category: { type: 'string' }
-          }
-        }
-      });
-      setForm(prev => ({
-        ...prev,
-        supplier_name: result.supplier_name || '',
-        supplier_tin: result.supplier_tin || '',
-        receipt_number: result.receipt_number || '',
-        receipt_date: result.receipt_date || '',
-        subtotal: result.subtotal || '',
-        vat_rate: result.vat_rate || company?.vat_rate || 12.5,
-        vat_amount: result.vat_amount || '',
-        total_amount: result.total_amount || '',
-        payment_method: result.payment_method || '',
-        category: result.category || '',
-      }));
-      setStep('review');
-      toast.success('Receipt data extracted!');
-    } catch (err) {
-      toast.error('Could not extract data. Please fill in manually.');
-      setStep('review');
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  const handleSkipExtract = () => setStep('review');
 
   const handleSave = async () => {
     setSaving(true);
@@ -135,7 +130,20 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     onClose();
   };
 
-  const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const updateField = (field, value) => {
+    setForm(prev => {
+      const updated = { ...prev, [field]: value };
+      // Auto-calculate VAT and total when subtotal or vat_rate changes
+      if (field === 'subtotal' || field === 'vat_rate') {
+        const sub = parseFloat(field === 'subtotal' ? value : prev.subtotal) || 0;
+        const rate = parseFloat(field === 'vat_rate' ? value : prev.vat_rate) || 0;
+        const vatAmt = sub * (rate / 100);
+        updated.vat_amount = vatAmt.toFixed(2);
+        updated.total_amount = (sub + vatAmt).toFixed(2);
+      }
+      return updated;
+    });
+  };
 
   const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
@@ -168,19 +176,10 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         )}
 
         {step === 'extract' && (
-          <div className="space-y-4">
-            {photoUrl && (
-              <div className="rounded-xl overflow-hidden border border-border">
-                <img src={photoUrl} alt="Receipt" className="w-full max-h-48 object-contain bg-muted" />
-              </div>
-            )}
-            <Button onClick={handleExtract} disabled={extracting} className="w-full gap-2">
-              {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {extracting ? 'Reading receipt...' : 'Extract with AI'}
-            </Button>
-            <Button variant="ghost" onClick={handleSkipExtract} className="w-full text-muted-foreground">
-              Skip — fill in manually
-            </Button>
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">Reading receipt with AI...</p>
+            <p className="text-xs text-muted-foreground">This takes a few seconds</p>
           </div>
         )}
 

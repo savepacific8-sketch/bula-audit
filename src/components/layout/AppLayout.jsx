@@ -1,9 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
-import { Button } from '@/components/ui/button';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,7 +12,6 @@ const navItems = [
 ];
 
 export default function AppLayout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { company, userRole } = useCompany();
 
@@ -70,48 +67,37 @@ export default function AppLayout() {
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-40 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary tracking-tight">BULA AUDIT</h1>
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </Button>
+        {company && <p className="text-xs text-muted-foreground truncate max-w-[180px]">{company.name}</p>}
       </div>
 
-      {/* Mobile Nav Overlay */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-black/50" onClick={() => setMobileOpen(false)}>
-          <div className="absolute top-14 left-0 right-0 bg-card border-b border-border shadow-lg" onClick={e => e.stopPropagation()}>
-            <nav className="p-3 space-y-1">
-              {filteredNav.map(item => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-secondary'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary w-full"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </nav>
-          </div>
-        </div>
-      )}
+      {/* Mobile Bottom Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 flex items-center justify-around px-2 py-2 safe-area-pb">
+        {filteredNav.map(item => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all min-w-0 ${
+                isActive ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={handleLogout}
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-muted-foreground"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Logout</span>
+        </button>
+      </nav>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 pt-14 md:pt-0">
+      <main className="flex-1 md:ml-64 pt-14 md:pt-0 pb-20 md:pb-0">
         <div className="p-4 md:p-8 max-w-6xl mx-auto">
           <Outlet />
         </div>

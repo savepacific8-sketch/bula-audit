@@ -113,7 +113,7 @@ export default function CompanyProfile() {
             <div>
               <Label>Default VAT Rate (%)</Label>
               <Input type="number" step="0.1" value={form.vat_rate} onChange={e => update('vat_rate', e.target.value)} disabled={!canEdit} />
-              <p className="text-xs text-muted-foreground mt-1">Fiji standard VAT rate is 9% (previously 12.5%)</p>
+              <p className="text-xs text-muted-foreground mt-1">Fiji standard VAT rate is 12.5%</p>
             </div>
           )}
         </CardContent>

@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, FileText, Loader2 } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,6 +102,30 @@ export default function Reports() {
   const years = [];
   for (let y = now.getFullYear(); y >= now.getFullYear() - 5; y--) years.push(String(y));
 
+  const exportPDF = () => {
+    const monthLabel = MONTHS[Number(month)].label;
+    const lines = [];
+    lines.push(`${company?.name || 'Company'} — Expense Report`);
+    lines.push(`Period: ${monthLabel} ${year}`);
+    lines.push(`Generated: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`);
+    lines.push('');
+    lines.push(`Subtotal: FJ$${totalSubtotal.toFixed(2)}`);
+    lines.push(`VAT (${company?.vat_rate || 12.5}%): FJ$${totalVAT.toFixed(2)}`);
+    lines.push(`Total: FJ$${totalExpenses.toFixed(2)}`);
+    lines.push(`Receipts: ${filtered.length}`);
+    lines.push('');
+    lines.push('--- RECEIPT DETAILS ---');
+    filtered.forEach((r, i) => {
+      lines.push(`${i + 1}. ${r.receipt_date ? format(new Date(r.receipt_date), 'dd/MM/yyyy') : 'No date'} | ${r.supplier_name || 'Unknown'} | ${formatCategory(r.category)} | FJ$${(r.total_amount || 0).toFixed(2)} (VAT: FJ$${(r.vat_amount || 0).toFixed(2)})`);
+    });
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `report_${monthLabel}_${year}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportCSV = (data, filename) => {
     if (!data.length) return;
     const headers = Object.keys(data[0]);
@@ -194,9 +218,14 @@ export default function Reports() {
           <div className="flex justify-between items-center">
             <h2 className="text-base font-semibold">Monthly Expense Report</h2>
             {canExport && (
-              <Button variant="outline" size="sm" onClick={exportExpenseCSV} className="gap-2">
-                <Download className="w-3 h-3" /> CSV
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={exportExpenseCSV} className="gap-2">
+                  <Download className="w-3 h-3" /> CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportPDF} className="gap-2">
+                  <FileText className="w-3 h-3" /> PDF
+                </Button>
+              </div>
             )}
           </div>
           {filtered.length === 0 ? (

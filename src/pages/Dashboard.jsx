@@ -3,7 +3,11 @@ import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { formatFJD } from '@/lib/formatCurrency';
 import StatCard from '@/components/dashboard/StatCard';
-import { DollarSign, Receipt, Clock, CheckCircle2, TrendingUp, ShoppingBag } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { DollarSign, Receipt, Clock, CheckCircle2, TrendingUp, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { formatCategory } from '@/lib/formatCurrency';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -84,6 +88,46 @@ export default function Dashboard() {
         <StatCard title="Pending" value={pendingCount} icon={Clock} color="bg-amber-50" />
         <StatCard title="Approved" value={approvedCount} icon={CheckCircle2} color="bg-emerald-50" />
       </div>
+
+      {/* Recent Receipts */}
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-primary" />
+            Recent Receipts
+          </CardTitle>
+          <Link to="/receipts" className="text-xs text-primary flex items-center gap-1 hover:underline">
+            View all <ArrowRight className="w-3 h-3" />
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {receipts.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No receipts yet</p>
+          ) : (
+            <div className="space-y-2">
+              {receipts.slice(0, 5).map(r => (
+                <div key={r.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{r.supplier_name || 'Unknown Supplier'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.receipt_date ? format(new Date(r.receipt_date), 'dd MMM yyyy') : 'No date'}
+                      {r.category ? ` · ${formatCategory(r.category)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3">
+                    <span className="text-sm font-semibold whitespace-nowrap">{formatFJD(r.total_amount)}</span>
+                    <Badge className={`text-[10px] px-1.5 ${
+                      r.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                      r.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>{r.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
