@@ -1,0 +1,111 @@
+{
+  "name": "Receipt",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID of the company this receipt belongs to"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "URL of the uploaded receipt photo"
+    },
+    "supplier_name": {
+      "type": "string",
+      "description": "Name of the supplier"
+    },
+    "supplier_tin": {
+      "type": "string",
+      "description": "Supplier TIN"
+    },
+    "receipt_number": {
+      "type": "string",
+      "description": "Receipt number"
+    },
+    "receipt_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date on the receipt"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal before VAT"
+    },
+    "vat_rate": {
+      "type": "number",
+      "description": "VAT rate percentage"
+    },
+    "vat_amount": {
+      "type": "number",
+      "description": "VAT amount"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total amount including VAT"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "card",
+        "bank_transfer",
+        "cheque",
+        "mobile_money",
+        "other"
+      ],
+      "description": "Payment method used"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "office_supplies",
+        "utilities",
+        "rent",
+        "transport",
+        "food_beverage",
+        "equipment",
+        "repairs_maintenance",
+        "professional_services",
+        "marketing",
+        "insurance",
+        "inventory",
+        "wages",
+        "telecommunications",
+        "travel",
+        "other"
+      ],
+      "description": "Expense category"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Receipt approval status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Email of who uploaded the receipt"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of who reviewed the receipt"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the receipt was reviewed"
+    }
+  },
+  "required": [
+    "company_id",
+    "photo_url"
+  ]
+}

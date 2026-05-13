@@ -1,0 +1,42 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID of the company"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the team member"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the team member"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "manager",
+        "staff",
+        "accountant"
+      ],
+      "description": "Role within the company"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Whether the team member is active"
+    }
+  },
+  "required": [
+    "company_id",
+    "user_email",
+    "role"
+  ]
+}
