@@ -103,7 +103,7 @@ export default function AppLayout() {
         className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 masi-pattern wave-pattern"
         style={{
           background: 'hsl(var(--fiji-deep))',
-          paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+          paddingTop: 'max(14px, env(safe-area-inset-top, 14px))',
           paddingBottom: '10px',
         }}
       >
@@ -122,11 +122,11 @@ export default function AppLayout() {
         style={{
           background: 'hsl(var(--fiji-deep))',
           borderColor: 'rgba(255,255,255,0.10)',
-          paddingBottom: 'env(safe-area-inset-bottom, 12px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 16px)',
         }}
       >
         <div
-          className="flex items-stretch"
+          className="flex items-center"
           style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', overflowX: 'auto' }}
         >
           {/* First 2 nav items */}
@@ -136,7 +136,7 @@ export default function AppLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center flex-1 min-w-[52px] py-2 relative transition-colors"
+                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 relative transition-colors"
               >
                 {isActive && (
                   <span
@@ -158,7 +158,7 @@ export default function AppLayout() {
           {canUpload && (
             <Link
               to="/upload"
-              className="flex flex-col items-center justify-center flex-1 min-w-[52px] py-2"
+              className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5"
             >
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
@@ -177,7 +177,7 @@ export default function AppLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center flex-1 min-w-[52px] py-2 relative transition-colors"
+                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 relative transition-colors"
               >
                 {isActive && (
                   <span
@@ -198,7 +198,7 @@ export default function AppLayout() {
           {/* Sign Out */}
           <button
             onClick={handleLogout}
-            className="flex flex-col items-center justify-center flex-1 min-w-[52px] py-2 text-white/35 transition-colors"
+            className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 text-white/35 transition-colors"
           >
             <LogOut className="w-[20px] h-[20px] shrink-0" />
             <span className="text-[10px] font-medium mt-1 whitespace-nowrap">Sign Out</span>
@@ -211,7 +211,7 @@ export default function AppLayout() {
         className="flex-1 md:ml-64"
         style={{
           paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))',
-          paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 12px))',
+          paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 20px))',
         }}
       >
         <div className="p-4 md:p-8 md:pt-6 max-w-6xl mx-auto">
