@@ -50,16 +50,6 @@
         {
           "$and": [
             {
-              "data.user_email": "{{user.email}}"
-            },
-            {
-              "data.role": "owner"
-            }
-          ]
-        },
-        {
-          "$and": [
-            {
               "data.company_id": "{{user.data.current_company_id}}"
             },
             {
@@ -82,7 +72,23 @@
           }
         },
         {
-          "data.company_id": "{{user.data.current_company_id}}"
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager",
+                  "accountant"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "data.user_email": "{{user.email}}"
         }
       ]
     },
@@ -99,19 +105,12 @@
               "data.company_id": "{{user.data.current_company_id}}"
             },
             {
-              "$or": [
-                {
-                  "user.data.current_company_role": {
-                    "$in": [
-                      "owner",
-                      "manager"
-                    ]
-                  }
-                },
-                {
-                  "data.user_email": "{{user.email}}"
-                }
-              ]
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
             }
           ]
         }
@@ -130,7 +129,17 @@
               "data.company_id": "{{user.data.current_company_id}}"
             },
             {
-              "user.data.current_company_role": "owner"
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
+            },
+            {
+              "data.user_email": {
+                "$ne": "{{user.email}}"
+              }
             }
           ]
         }
