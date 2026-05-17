@@ -1,7 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, Waves } from 'lucide-react';
+import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
+import BulaLogo from '@/components/layout/BulaLogo';
 
 const navItems = [
   { path: '/',            label: 'Dashboard', icon: LayoutDashboard },
@@ -33,17 +34,17 @@ export default function AppLayout() {
         style={{ background: 'hsl(var(--fiji-deep))' }}
       >
         {/* Brand */}
-        <div className="px-6 pt-7 pb-5 wave-pattern">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
-              <Waves className="w-4 h-4 text-white" />
+        <div className="px-5 pt-6 pb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <BulaLogo size={36} />
+            <div>
+              <span className="text-white font-poppins font-bold text-[17px] tracking-wide leading-none block">BULA AUDIT</span>
+              <p className="text-white/40 text-[9px] font-semibold uppercase tracking-widest mt-0.5">Fiji Business Finance</p>
             </div>
-            <span className="text-white font-poppins font-bold text-lg tracking-wide leading-none">BULA AUDIT</span>
           </div>
-          <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest ml-10">Business Intelligence</p>
           {company && (
-            <div className="mt-3 ml-10 px-2 py-1.5 rounded-lg bg-white/10 border border-white/10">
-              <p className="text-white/75 text-[11px] truncate font-medium">{company.name}</p>
+            <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/10">
+              <p className="text-white/70 text-[11px] truncate font-medium">{company.name}</p>
             </div>
           )}
         </div>
@@ -106,10 +107,8 @@ export default function AppLayout() {
           paddingBottom: '10px',
         }}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
-            <Waves className="w-3.5 h-3.5 text-white" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <BulaLogo size={28} />
           <span className="text-white font-poppins font-bold text-base tracking-wide">BULA AUDIT</span>
         </div>
         {company && (
