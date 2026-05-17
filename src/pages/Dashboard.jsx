@@ -113,7 +113,7 @@ export default function Dashboard() {
             {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <ClearTestReceipts onCleared={() => window.location.reload()} />
+        <ClearTestReceipts />
       </div>
 
       {/* Stat Cards — 2 cols on mobile, 3 on md */}

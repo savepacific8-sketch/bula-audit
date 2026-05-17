@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
+import { queryClientInstance } from '@/lib/query-client';
 import { Button } from '@/components/ui/button';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,30 +19,54 @@ export default function ClearTestReceipts({ onCleared }) {
   const { company, userRole } = useCompany();
   const [step, setStep] = useState(0); // 0=idle, 1=first confirm, 2=second confirm
   const [deleting, setDeleting] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(null); // { count } | { error }
 
   // Only visible to owner / admin
   if (userRole !== 'owner' && userRole !== 'admin') return null;
 
-  const handleFirstConfirm = () => setStep(1);
-  const handleSecondConfirm = () => setStep(2);
-  const handleCancel = () => { setStep(0); setResult(null); };
+  const handleCancel = () => { setStep(0); };
 
   const handleDelete = async () => {
     setDeleting(true);
+    setStep(0);
     try {
+      // 1. Fetch all receipts for this company
       const receipts = await base44.entities.Receipt.filter({ company_id: company.id });
-      let deleted = 0;
-      for (const r of receipts) {
-        await base44.entities.Receipt.delete(r.id);
-        deleted++;
+
+      if (receipts.length === 0) {
+        setResult({ count: 0 });
+        setDeleting(false);
+        return;
       }
-      setResult({ count: deleted });
-      setStep(0);
+
+      // 2. Delete each receipt (item_lines and AI data are stored inline — deleted with the receipt)
+      let deleted = 0;
+      const errors = [];
+      for (const r of receipts) {
+        try {
+          await base44.entities.Receipt.delete(r.id);
+          deleted++;
+        } catch (err) {
+          errors.push(`Receipt ${r.id}: ${err.message}`);
+        }
+      }
+
+      if (errors.length > 0 && deleted === 0) {
+        setResult({ error: `Permission denied or error:\n${errors.slice(0, 3).join('\n')}` });
+        setDeleting(false);
+        return;
+      }
+
+      // 3. Invalidate ALL receipt-related React Query caches so every list/dashboard refetches from DB
+      await queryClientInstance.invalidateQueries({ queryKey: ['receipts'] });
+      await queryClientInstance.invalidateQueries({ queryKey: ['receipt'] });
+      // Force immediate refetch (don't wait for next focus)
+      await queryClientInstance.refetchQueries({ queryKey: ['receipts'] });
+
+      setResult({ count: deleted, errors: errors.length > 0 ? errors : null });
       onCleared?.();
     } catch (err) {
       setResult({ error: err.message });
-      setStep(0);
     } finally {
       setDeleting(false);
     }
@@ -53,18 +78,37 @@ export default function ClearTestReceipts({ onCleared }) {
       <Button
         variant="outline"
         size="sm"
-        className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground gap-1.5"
-        onClick={handleFirstConfirm}
+        disabled={deleting}
+        className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground gap-1.5 shrink-0"
+        onClick={() => setStep(1)}
       >
         <Trash2 className="w-3.5 h-3.5" />
-        Clear Test Receipts
+        {deleting ? 'Deleting…' : 'Clear Test Receipts'}
       </Button>
 
-      {/* Result toast-style message */}
+      {/* Result notification */}
       {result && (
-        <div className={`fixed bottom-24 md:bottom-6 right-4 z-50 rounded-lg px-4 py-2.5 text-sm shadow-lg ${result.error ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-600 text-white'}`}>
-          {result.error ? `Error: ${result.error}` : `✓ Deleted ${result.count} receipt${result.count !== 1 ? 's' : ''}`}
-          <button className="ml-3 opacity-70 hover:opacity-100" onClick={() => setResult(null)}>✕</button>
+        <div
+          className={`fixed bottom-24 md:bottom-6 right-4 z-50 max-w-sm rounded-lg px-4 py-3 text-sm shadow-xl flex items-start gap-2 ${
+            result.error ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-600 text-white'
+          }`}
+        >
+          {result.error
+            ? <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            : <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          }
+          <div className="flex-1 min-w-0">
+            {result.error
+              ? <span className="whitespace-pre-wrap break-words">{result.error}</span>
+              : <>
+                  <span className="font-semibold">Deleted {result.count} receipt{result.count !== 1 ? 's' : ''}</span>
+                  {result.errors && (
+                    <p className="text-xs mt-0.5 opacity-80">{result.errors.length} failed — check permissions</p>
+                  )}
+                </>
+            }
+          </div>
+          <button className="ml-2 opacity-70 hover:opacity-100 shrink-0" onClick={() => setResult(null)}>✕</button>
         </div>
       )}
 
@@ -74,27 +118,28 @@ export default function ClearTestReceipts({ onCleared }) {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="w-5 h-5" />
-              Clear all receipts?
+              Clear all receipts for {company?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                This will permanently delete <strong>all receipt records</strong> for <strong>{company?.name}</strong>, including:
-              </span>
-              <ul className="list-disc list-inside text-sm space-y-0.5 pl-1">
-                <li>Receipt records and metadata</li>
-                <li>AI extraction data and item lines</li>
-                <li>Uploaded receipt images</li>
-              </ul>
-              <span className="block mt-2 font-medium">
-                Users, company settings, VAT configuration, and team members will <strong>not</strong> be affected.
-              </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>This will permanently delete <strong>all receipt records</strong>, including:</p>
+                <ul className="list-disc list-inside space-y-0.5 pl-1">
+                  <li>Receipt records and metadata</li>
+                  <li>All AI extraction data and confidence scores</li>
+                  <li>All line items stored on receipts</li>
+                  <li>Uploaded receipt image references</li>
+                </ul>
+                <p className="font-medium pt-1">
+                  Users, company settings, VAT configuration, and team members will <strong>not</strong> be affected.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleSecondConfirm}
+              onClick={() => setStep(2)}
             >
               Yes, continue
             </AlertDialogAction>
@@ -110,21 +155,25 @@ export default function ClearTestReceipts({ onCleared }) {
               <AlertTriangle className="w-5 h-5" />
               Are you absolutely sure?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block text-base font-semibold text-foreground mb-1">
-                This action <span className="underline">cannot be undone</span>.
-              </span>
-              All receipts for <strong>{company?.name}</strong> will be permanently deleted. There is no way to recover this data.
+            <AlertDialogDescription asChild>
+              <div className="text-sm space-y-2">
+                <p className="text-base font-semibold text-foreground">
+                  This action <span className="underline">cannot be undone</span>.
+                </p>
+                <p>
+                  All receipts for <strong>{company?.name}</strong> will be permanently deleted from the database.
+                  There is no way to recover this data.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancel}>Cancel — keep receipts</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDelete}
             >
-              {deleting ? 'Deleting…' : 'Delete everything — I understand'}
+              Delete everything — I understand
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
