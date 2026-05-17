@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatFJD, formatCategory, formatPaymentMethod } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { extractReceiptData } from '@/lib/extractReceipt';
 
 const statusConfig = {
   pending: { label: 'Pending', icon: Clock, className: 'bg-amber-100 text-amber-700' },
@@ -18,6 +19,39 @@ const statusConfig = {
 export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate }) {
   const { canApprove } = useCompany();
   const [updating, setUpdating] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
+
+  const handleRescan = async () => {
+    if (!receipt.photo_url) return;
+    setRescanning(true);
+    try {
+      const result = await extractReceiptData(receipt.photo_url);
+      await base44.entities.Receipt.update(receipt.id, {
+        supplier_name:     result.supplier_name     || receipt.supplier_name,
+        supplier_tin:      result.supplier_tin      || receipt.supplier_tin,
+        receipt_number:    result.receipt_number    || receipt.receipt_number,
+        receipt_date:      result.receipt_date      || receipt.receipt_date,
+        currency:          result.currency          || receipt.currency,
+        subtotal:          result.subtotal          ?? receipt.subtotal,
+        vat_rate:          result.vat_rate          ?? receipt.vat_rate,
+        vat_amount:        result.vat_amount        ?? receipt.vat_amount,
+        total_amount:      result.total_amount      ?? receipt.total_amount,
+        payment_method:    result.payment_method    || receipt.payment_method,
+        category:          result.category          || receipt.category,
+        item_lines:        result.item_lines?.length ? result.item_lines : receipt.item_lines,
+        ai_confidence:     result.ai_confidence     ?? receipt.ai_confidence,
+        ai_missing_fields: result.ai_missing_fields || [],
+        status:            'pending',
+      });
+      toast.success('Receipt re-scanned successfully');
+      onUpdate();
+      onClose();
+    } catch {
+      toast.error('Re-scan failed');
+    } finally {
+      setRescanning(false);
+    }
+  };
 
   if (!receipt) return null;
 
@@ -72,8 +106,16 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
         {/* AI Extraction Summary */}
         {(receipt.ai_confidence != null || receipt.ai_missing_fields?.length > 0) && (
           <div className="rounded-xl bg-muted/60 border border-border p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" /> AI Extraction
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <Sparkles className="w-3.5 h-3.5" /> AI Extraction
+              </div>
+              {receipt.photo_url && (
+                <Button size="sm" variant="outline" onClick={handleRescan} disabled={rescanning} className="gap-1.5 text-xs h-7">
+                  {rescanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Re-scan
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               {receipt.ai_confidence != null && (
@@ -89,6 +131,22 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Image quality warning */}
+        {receipt.image_quality_issues?.length > 0 && (
+          <div className="rounded-xl bg-amber-50 border border-amber-300 p-3 flex gap-2 text-xs text-amber-800">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span><strong>Image issues:</strong> {receipt.image_quality_issues.join(', ')}. Consider re-scanning with a clearer photo.</span>
+          </div>
+        )}
+
+        {/* Validation issues */}
+        {receipt.validation_issues?.length > 0 && (
+          <div className="rounded-xl bg-red-50 border border-red-300 p-3 flex gap-2 text-xs text-red-800">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span><strong>Number validation failed:</strong> {receipt.validation_issues.map(i => i.replace(/_/g, ' ')).join(', ')}. Please verify amounts before approving.</span>
           </div>
         )}
 
