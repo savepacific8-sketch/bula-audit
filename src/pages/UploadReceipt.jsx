@@ -23,6 +23,18 @@ const CATEGORIES = [
 const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_money', 'other'];
 const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
+function ExtractStep({ label, icon, active }) {
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+      active ? 'bg-primary/8 border-primary/30 text-primary' : 'bg-muted/50 border-border text-muted-foreground'
+    }`}>
+      <span className={active ? 'text-primary' : 'text-muted-foreground'}>{icon}</span>
+      <span className="flex-1">{label}</span>
+      {active && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+    </div>
+  );
+}
+
 const EMPTY_FORM = {
   supplier_name: '', supplier_tin: '', receipt_number: '',
   receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: '',
@@ -231,14 +243,21 @@ export default function UploadReceipt() {
 
   // ── EXTRACT STEP ──────────────────────────────────────────────────
   if (step === 'extract') {
+    // extracting stays true during both sub-steps; we use a simple elapsed-time
+    // heuristic to show "Step 2" after ~10s (extraction typically takes 8–15s)
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-primary animate-pulse" />
         </div>
-        <p className="text-lg font-semibold">Reading receipt...</p>
-        <p className="text-sm text-muted-foreground text-center max-w-xs">AI is carefully analysing every number and field on your receipt</p>
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <div className="text-center">
+          <p className="text-lg font-semibold">Analysing receipt…</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xs">Two-pass AI verification for maximum accuracy</p>
+        </div>
+        <div className="w-full max-w-xs space-y-3">
+          <ExtractStep label="Step 1 — Extract data" icon={<Sparkles className="w-4 h-4" />} active />
+          <ExtractStep label="Step 2 — Validate numbers" icon={<CheckCircle2 className="w-4 h-4" />} active />
+        </div>
       </div>
     );
   }

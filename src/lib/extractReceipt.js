@@ -8,8 +8,9 @@ const CATEGORIES = [
 
 const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_money', 'other'];
 
-export async function extractReceiptData(photoUrl) {
-  const result = await base44.integrations.Core.InvokeLLM({
+// ─── Step 1: Extract raw data from the receipt image ────────────────────────
+async function stepExtract(photoUrl) {
+  return base44.integrations.Core.InvokeLLM({
     model: 'claude_sonnet_4_6',
     prompt: `You are an expert receipt OCR and accounting data extraction assistant for Fiji MSMEs.
 
@@ -51,12 +52,7 @@ Return only valid JSON in this exact structure (no markdown, no commentary):
   "payment_method": "",
   "category": "",
   "item_lines": [
-    {
-      "description": "",
-      "quantity": null,
-      "unit_price": null,
-      "line_total": null
-    }
+    { "description": "", "quantity": null, "unit_price": null, "line_total": null }
   ],
   "confidence": {
     "supplier_name": 0,
@@ -120,30 +116,172 @@ Return only valid JSON in this exact structure (no markdown, no commentary):
         validation: {
           type: 'object',
           properties: {
-            math_matches:                { type: 'boolean' },
+            math_matches:                   { type: 'boolean' },
             subtotal_plus_vat_equals_total: { type: 'boolean' },
-            items_add_to_total:          { type: 'boolean' },
-            needs_review:                { type: 'boolean' },
-            issues:                      { type: 'array', items: { type: 'string' } },
+            items_add_to_total:             { type: 'boolean' },
+            needs_review:                   { type: 'boolean' },
+            issues:                         { type: 'array', items: { type: 'string' } },
           }
         },
         missing_fields: { type: 'array', items: { type: 'string' } },
       }
     }
   });
+}
 
-  // Normalise to the shape the rest of the app expects
-  const r = result;
-  r.field_confidence     = r.confidence || {};
-  r.validation_issues    = r.validation?.issues || [];
+// ─── Step 2: Validate extracted data against the image ───────────────────────
+async function stepValidate(photoUrl, extracted) {
+  const summary = JSON.stringify({
+    receipt_number: extracted.receipt_number,
+    receipt_date:   extracted.receipt_date,
+    subtotal:       extracted.subtotal,
+    vat_amount:     extracted.vat_amount,
+    total_amount:   extracted.total_amount,
+    item_lines:     extracted.item_lines,
+  }, null, 2);
+
+  return base44.integrations.Core.InvokeLLM({
+    model: 'claude_sonnet_4_6',
+    prompt: `You are a receipt data validation assistant. A first AI pass has already extracted data from a receipt image.
+
+Your job is to look at the SAME receipt image and verify whether the extracted values are correct.
+
+Extracted data to verify:
+${summary}
+
+For each field, look at the receipt image and answer:
+1. Does the total_amount exactly match what is printed?
+2. Does the subtotal exactly match what is printed (if shown)?
+3. Does the vat_amount exactly match what is printed (if shown)?
+4. Does the receipt_number exactly match what is printed?
+5. Does the receipt_date match the date on the receipt?
+6. For each item line, does the line_total equal quantity × unit_price?
+7. Does subtotal + vat_amount ≈ total_amount (within $0.02)?
+
+For any field where the extracted value looks WRONG or UNCERTAIN compared to the image, set its confidence to a low value (0–40) and add it to suspect_fields with what you actually see on the receipt.
+
+Return only valid JSON (no markdown):
+
+{
+  "confirmed_fields": {
+    "total_amount":   true,
+    "subtotal":       true,
+    "vat_amount":     true,
+    "receipt_number": true,
+    "receipt_date":   true
+  },
+  "suspect_fields": {
+    "total_amount":   null,
+    "subtotal":       null,
+    "vat_amount":     null,
+    "receipt_number": null,
+    "receipt_date":   null
+  },
+  "item_line_issues": [],
+  "math_check": {
+    "subtotal_plus_vat_equals_total": false,
+    "discrepancy": null
+  },
+  "confidence_overrides": {
+    "total_amount":   null,
+    "subtotal":       null,
+    "vat_amount":     null,
+    "receipt_number": null,
+    "receipt_date":   null
+  },
+  "additional_issues": []
+}
+
+Rules:
+- suspect_fields: if a field looks wrong, put what you actually see in the image as the value. Otherwise null.
+- confidence_overrides: if you disagree with the extraction, set a low number (0–40). Otherwise null.
+- item_line_issues: list any item line index (0-based) where line_total ≠ quantity × unit_price.
+- additional_issues: any other problems you notice (e.g. "total appears to be 45.00 not 4.50").`,
+    file_urls: [photoUrl],
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        confirmed_fields: {
+          type: 'object',
+          properties: {
+            total_amount:   { type: 'boolean' },
+            subtotal:       { type: 'boolean' },
+            vat_amount:     { type: 'boolean' },
+            receipt_number: { type: 'boolean' },
+            receipt_date:   { type: 'boolean' },
+          }
+        },
+        suspect_fields: { type: 'object' },
+        item_line_issues: { type: 'array', items: { type: 'number' } },
+        math_check: {
+          type: 'object',
+          properties: {
+            subtotal_plus_vat_equals_total: { type: 'boolean' },
+            discrepancy: { type: 'number' },
+          }
+        },
+        confidence_overrides: { type: 'object' },
+        additional_issues: { type: 'array', items: { type: 'string' } },
+      }
+    }
+  });
+}
+
+// ─── Merge extraction + validation results ───────────────────────────────────
+function mergeResults(extracted, validation) {
+  const r = { ...extracted };
+  const conf = { ...(r.confidence || {}) };
+
+  // Apply confidence overrides from the validation pass
+  const overrides = validation.confidence_overrides || {};
+  for (const [field, val] of Object.entries(overrides)) {
+    if (val != null) conf[field] = val;
+  }
+
+  // For fields the validator flagged as suspect, lower confidence if not already low
+  const suspect = validation.suspect_fields || {};
+  for (const [field, seenValue] of Object.entries(suspect)) {
+    if (seenValue != null) {
+      conf[field] = Math.min(conf[field] ?? 50, 35);
+    }
+  }
+
+  // Accumulate validation issues
+  const issues = [...(r.validation?.issues || [])];
+  if (validation.additional_issues?.length) {
+    issues.push(...validation.additional_issues);
+  }
+  if (validation.item_line_issues?.length) {
+    issues.push(`item_line_mismatch: lines ${validation.item_line_issues.join(', ')}`);
+  }
+  if (!validation.math_check?.subtotal_plus_vat_equals_total) {
+    if (!issues.includes('totals_mismatch')) issues.push('totals_mismatch');
+  }
+
+  const needs_review =
+    issues.length > 0 ||
+    Object.values(conf).some(v => v < 60);
+
+  r.confidence  = conf;
+  r.field_confidence     = conf;
+  r.validation_issues    = issues;
   r.image_quality_issues = [];
-  r.needs_review         = r.validation?.needs_review ?? false;
-  r.ai_confidence        = Math.round(
-    Object.values(r.field_confidence).length
-      ? Object.values(r.field_confidence).reduce((a, b) => a + b, 0) / Object.values(r.field_confidence).length
-      : 50
-  );
-  r.ai_missing_fields = r.missing_fields || [];
+  r.needs_review         = needs_review;
+  r.ai_missing_fields    = r.missing_fields || [];
+  r.ai_confidence = Object.values(conf).length
+    ? Math.round(Object.values(conf).reduce((a, b) => a + b, 0) / Object.values(conf).length)
+    : 50;
+
+  // Attach validator's suspect values so the UI can hint at corrections
+  r.suspect_fields = suspect;
 
   return r;
+}
+
+// ─── Public entry point ──────────────────────────────────────────────────────
+export async function extractReceiptData(photoUrl) {
+  // Run both steps — Step 2 can start after Step 1 finishes
+  const extracted = await stepExtract(photoUrl);
+  const validation = await stepValidate(photoUrl, extracted);
+  return mergeResults(extracted, validation);
 }
