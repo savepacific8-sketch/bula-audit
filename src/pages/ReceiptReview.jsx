@@ -13,6 +13,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Clock, Loader2,
   Sparkles, AlertTriangle, RotateCcw, Save
 } from 'lucide-react';
+import VatAdvisorChat from '@/components/receipts/VatAdvisorChat';
 
 const VAT_TYPES = [
   { value: 'inclusive',  label: 'VAT Inclusive' },
@@ -433,6 +434,9 @@ export default function ReceiptReview() {
             </div>
           </div>
         )}
+
+        {/* Fiji VAT Advisor */}
+        <VatAdvisorChat receiptId={receiptId} receipt={receipt} />
 
         {/* Meta */}
         <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 text-xs">
