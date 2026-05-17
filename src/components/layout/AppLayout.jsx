@@ -122,8 +122,8 @@ export default function AppLayout() {
         style={{
           background: 'hsl(var(--fiji-deep))',
           borderColor: 'rgba(255,255,255,0.10)',
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
-          paddingTop: '4px',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+          paddingTop: '8px',
         }}
       >
         <div className="flex items-center">
@@ -209,7 +209,7 @@ export default function AppLayout() {
         className="flex-1 md:ml-64 overflow-y-auto"
         style={{
           paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))',
-          paddingBottom: 'calc(90px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))',
           height: '100svh',
         }}
       >
