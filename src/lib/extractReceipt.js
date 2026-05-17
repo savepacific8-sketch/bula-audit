@@ -14,25 +14,23 @@ async function stepExtract(photoUrl) {
     model: 'claude_sonnet_4_6',
     prompt: `You are an expert receipt OCR and accounting data extraction assistant for Fiji MSMEs.
 
-Your job is to read the receipt image very carefully and extract exact values.
+Your job is to read the receipt image very carefully and extract ONLY values that are clearly visible.
 
-Important rules:
-1. Read all numbers slowly and carefully.
-2. Pay special attention to decimal points, commas, and currency symbols.
-3. Do not guess unclear values.
-4. If a field is not visible or is unclear, return null.
-5. Extract the total amount exactly as printed on the receipt.
-6. Extract VAT amount exactly as printed if shown.
-7. Extract subtotal exactly as printed if shown.
-8. Extract receipt number exactly as printed if shown.
-9. Extract the date exactly as printed, then convert it to YYYY-MM-DD if possible.
+STRICT RULES — you MUST follow every one:
+1. NEVER guess, estimate, or infer a number. If you cannot read it clearly, return null.
+2. If a field is blurry, cut off, or ambiguous, return null — do NOT make up a value.
+3. Extract total_amount ONLY if it is clearly printed. If unclear, return null.
+4. Extract vat_amount ONLY if explicitly printed on the receipt. If not shown, return null.
+5. Extract subtotal ONLY if explicitly printed. Do NOT derive it from total − VAT.
+6. Do NOT calculate or derive any monetary value. Extract only what is printed.
+7. Pay close attention to decimal points: 45.00 ≠ 4.50 ≠ 450.00.
+8. Do NOT fill in vat_rate unless it is stated on the receipt. Return null if not shown.
+9. Extract receipt_date exactly as printed, then convert to YYYY-MM-DD. If unreadable, return null.
 10. Fiji currency is FJD unless another currency is clearly shown.
-11. Fiji VAT default is 12.5%, but only calculate VAT if VAT is not shown and the receipt clearly indicates VAT inclusive or VAT exclusive.
-12. If VAT is inclusive, VAT amount = total × 12.5 / 112.5.
-13. If VAT is exclusive, VAT amount = subtotal × 0.125.
-14. If the math does not match, do not force it. Mark the receipt as needs_review.
-15. Always return field-level confidence scores.
-16. Never approve the receipt automatically.
+11. If any financial field is unclear, set its confidence score below 50 and set needs_review to true.
+12. Always return field-level confidence scores (0–100). Be honest — unclear fields should score below 50.
+13. If subtotal + vat_amount does not equal total_amount (within $0.02), set needs_review to true and add "totals_mismatch" to issues.
+14. Never approve the receipt automatically.
 
 For category, pick the best match from: [${CATEGORIES.join(', ')}] or null.
 For payment_method, pick from: [${PAYMENT_METHODS.join(', ')}] or null.
@@ -238,11 +236,13 @@ function mergeResults(extracted, validation) {
     if (val != null) conf[field] = val;
   }
 
-  // For fields the validator flagged as suspect, lower confidence if not already low
+  // For fields the validator flagged as suspect, lower confidence AND null out the value
   const suspect = validation.suspect_fields || {};
   for (const [field, seenValue] of Object.entries(suspect)) {
     if (seenValue != null) {
       conf[field] = Math.min(conf[field] ?? 50, 35);
+      // Null out the extracted value so the user must fill it in manually
+      r[field] = null;
     }
   }
 

@@ -150,6 +150,24 @@ export default function UploadReceipt() {
   };
 
   const handleSave = async () => {
+    // Client-side validation before saving
+    const sub   = form.subtotal     !== '' && form.subtotal     != null ? Number(form.subtotal)     : null;
+    const vat   = form.vat_amount   !== '' && form.vat_amount   != null ? Number(form.vat_amount)   : null;
+    const total = form.total_amount !== '' && form.total_amount != null ? Number(form.total_amount) : null;
+
+    if (total == null) {
+      toast.error('Total amount is required. Please enter the total from the receipt.');
+      return;
+    }
+    if (sub != null && vat != null) {
+      const expected = Math.round((sub + vat) * 100) / 100;
+      const actual   = Math.round(total * 100) / 100;
+      if (Math.abs(expected - actual) > 0.02) {
+        toast.error(`Numbers don't add up: ${sub} + ${vat} = ${expected}, but total is ${actual}. Please correct before saving.`);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const user = await base44.auth.me();
