@@ -74,15 +74,18 @@ export default function AppLayout() {
 
       {/* Mobile Bottom Nav */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 overflow-x-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
       >
-        <div className="flex items-center justify-around min-w-max w-full px-0.5 py-0.5">
+        <div
+          className="flex items-stretch overflow-x-auto scrollbar-hide"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {filteredNav.slice(0, 2).map(item => {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path}
-                className={`flex flex-col items-center justify-center gap-0 px-2 min-h-[44px] min-w-[44px] rounded-lg transition-all ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`flex flex-col items-center justify-center flex-shrink-0 px-3 py-1.5 min-h-[52px] min-w-[52px] transition-all ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 <item.icon className="w-[18px] h-[18px] shrink-0" />
                 <span className="text-[9px] font-medium whitespace-nowrap leading-tight mt-0.5">{item.label}</span>
@@ -90,14 +93,15 @@ export default function AppLayout() {
             );
           })}
 
-          {/* Center Upload FAB */}
+          {/* Upload Button */}
           {canUpload && (
             <Link to="/upload"
-              className="flex flex-col items-center justify-center gap-0 px-2 min-h-[44px] min-w-[44px] transition-all"
+              className="flex flex-col items-center justify-center flex-shrink-0 px-3 py-1.5 min-h-[52px] min-w-[52px] transition-all"
             >
-              <div className="w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center">
+              <div className="w-9 h-9 rounded-full bg-primary shadow-lg flex items-center justify-center">
                 <PlusCircle className="w-5 h-5 text-primary-foreground" />
               </div>
+              <span className="text-[9px] font-medium whitespace-nowrap leading-tight mt-0.5 text-primary">Upload</span>
             </Link>
           )}
 
@@ -105,7 +109,7 @@ export default function AppLayout() {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path}
-                className={`flex flex-col items-center justify-center gap-0 px-2 min-h-[44px] min-w-[44px] rounded-lg transition-all ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`flex flex-col items-center justify-center flex-shrink-0 px-3 py-1.5 min-h-[52px] min-w-[52px] transition-all ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 <item.icon className="w-[18px] h-[18px] shrink-0" />
                 <span className="text-[9px] font-medium whitespace-nowrap leading-tight mt-0.5">{item.label}</span>
@@ -114,7 +118,7 @@ export default function AppLayout() {
           })}
 
           <button onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-0 px-2 min-h-[44px] min-w-[44px] rounded-lg text-muted-foreground"
+            className="flex flex-col items-center justify-center flex-shrink-0 px-3 py-1.5 min-h-[52px] min-w-[52px] text-muted-foreground"
           >
             <LogOut className="w-[18px] h-[18px] shrink-0" />
             <span className="text-[9px] font-medium whitespace-nowrap leading-tight mt-0.5">Logout</span>
@@ -125,7 +129,7 @@ export default function AppLayout() {
       {/* Main Content */}
       <main
         className="flex-1 md:ml-64 pt-14 md:pt-0 md:pb-0"
-        style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))' }}
+        style={{ paddingBottom: 'calc(90px + env(safe-area-inset-bottom, 20px))' }}
       >
         <div className="p-4 md:p-8 max-w-6xl mx-auto">
           <Outlet />
