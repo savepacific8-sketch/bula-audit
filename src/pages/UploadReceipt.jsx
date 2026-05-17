@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import {
   Camera, ImagePlus, Loader2, Upload, ArrowLeft,
-  CheckCircle2, RotateCcw, Sparkles, AlertTriangle, RefreshCw, Info
+  CheckCircle2, RotateCcw, Sparkles, AlertTriangle, RefreshCw, Info,
+  Sun, Eye, Crop, Wind
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
@@ -22,18 +23,6 @@ const CATEGORIES = [
 
 const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_money', 'other'];
 const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-function ExtractStep({ label, icon, active }) {
-  return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
-      active ? 'bg-primary/8 border-primary/30 text-primary' : 'bg-muted/50 border-border text-muted-foreground'
-    }`}>
-      <span className={active ? 'text-primary' : 'text-muted-foreground'}>{icon}</span>
-      <span className="flex-1">{label}</span>
-      {active && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-    </div>
-  );
-}
 
 const EMPTY_FORM = {
   supplier_name: '', supplier_tin: '', receipt_number: '',
@@ -68,11 +57,31 @@ export default function UploadReceipt() {
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check file size — warn if very small (likely low quality)
+    if (file.size < 50 * 1024) {
+      toast.warning('Image appears very small. For best results, use a higher quality photo.');
+    }
+
+    // Load image to check basic dimensions
     const objectUrl = URL.createObjectURL(file);
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.width < 400 || img.height < 400) {
+          toast.warning('Image resolution is low. Try capturing from closer or in better light.');
+        }
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = objectUrl;
+    });
+
     setPreviewSrc(objectUrl);
     setStep('preview');
     setUploading(true);
     try {
+      // Upload the original file without resizing or compression
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
     } catch {
@@ -190,14 +199,31 @@ export default function UploadReceipt() {
           </Button>
           <h1 className="text-xl font-bold">Upload Receipt</h1>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-sm mx-auto w-full">
-          <p className="text-muted-foreground text-sm text-center mb-2">
+        <div className="flex-1 flex flex-col gap-4 max-w-sm mx-auto w-full py-2">
+          <p className="text-muted-foreground text-sm text-center">
             Take a photo or choose one from your gallery
           </p>
-          <div className="w-full p-3 rounded-xl bg-blue-50 border border-blue-200 flex gap-2 text-xs text-blue-700">
-            <Info className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>For best results: ensure good lighting, hold camera steady, and capture the full receipt clearly.</span>
+
+          {/* Photo tips */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm mb-1">
+              <Info className="w-4 h-4" /> Tips for best results
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { icon: Sun,  text: 'Good lighting, no shadows' },
+                { icon: Eye,  text: 'All corners visible' },
+                { icon: Crop, text: 'Capture the full receipt' },
+                { icon: Wind, text: 'Flat surface, no blur' },
+              ].map(({ icon: Icon, text }) => (
+                <div key={text} className="flex items-start gap-1.5 text-xs text-blue-700">
+                  <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
           </div>
+
           <label className="w-full cursor-pointer">
             <div className="flex items-center justify-center gap-3 bg-primary text-primary-foreground rounded-2xl px-6 py-5 text-base font-semibold shadow-lg hover:bg-primary/90 transition-colors">
               <Camera className="w-6 h-6" /> Use Camera
@@ -243,21 +269,17 @@ export default function UploadReceipt() {
 
   // ── EXTRACT STEP ──────────────────────────────────────────────────
   if (step === 'extract') {
-    // extracting stays true during both sub-steps; we use a simple elapsed-time
-    // heuristic to show "Step 2" after ~10s (extraction typically takes 8–15s)
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-primary animate-pulse" />
         </div>
-        <div className="text-center">
-          <p className="text-lg font-semibold">Analysing receipt…</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xs">Two-pass AI verification for maximum accuracy</p>
+        <p className="text-lg font-semibold">Analysing receipt...</p>
+        <div className="space-y-2 text-sm text-muted-foreground text-center max-w-xs">
+          <p>Step 1: Extracting all fields from the image</p>
+          <p>Step 2: Validating numbers against the receipt</p>
         </div>
-        <div className="w-full max-w-xs space-y-3">
-          <ExtractStep label="Step 1 — Extract data" icon={<Sparkles className="w-4 h-4" />} active />
-          <ExtractStep label="Step 2 — Validate numbers" icon={<CheckCircle2 className="w-4 h-4" />} active />
-        </div>
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
