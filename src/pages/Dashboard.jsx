@@ -4,6 +4,7 @@ import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { formatFJD, formatCategory } from '@/lib/formatCurrency';
 import { Link } from 'react-router-dom';
 import { DollarSign, Receipt, Clock, CheckCircle2, XCircle, TrendingUp, ShoppingBag, AlertTriangle, ArrowRight, Users } from 'lucide-react';
+import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -211,6 +212,9 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Spending Analyst */}
+      <SpendingTrendsChat />
 
       {/* Low-Confidence Receipts */}
       {lowConfidence.length > 0 && (
