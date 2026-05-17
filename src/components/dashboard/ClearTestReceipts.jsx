@@ -57,11 +57,12 @@ export default function ClearTestReceipts({ onCleared }) {
         return;
       }
 
-      // 3. Invalidate ALL receipt-related React Query caches so every list/dashboard refetches from DB
+      // 3. Wipe all receipt cache data immediately (removes stale data from UI at once)
+      // then refetch all active receipt queries from the database
+      queryClientInstance.setQueriesData({ queryKey: ['receipts'] }, []);
+      queryClientInstance.setQueriesData({ queryKey: ['receipt'] }, null);
       await queryClientInstance.invalidateQueries({ queryKey: ['receipts'] });
       await queryClientInstance.invalidateQueries({ queryKey: ['receipt'] });
-      // Force immediate refetch (don't wait for next focus)
-      await queryClientInstance.refetchQueries({ queryKey: ['receipts'] });
 
       setResult({ count: deleted, errors: errors.length > 0 ? errors : null });
       onCleared?.();
