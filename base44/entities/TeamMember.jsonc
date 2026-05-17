@@ -38,5 +38,103 @@
     "company_id",
     "user_email",
     "role"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.user_email": "{{user.email}}"
+            },
+            {
+              "data.role": "owner"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.company_id": "{{user.data.current_company_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user.data.current_company_role": {
+                    "$in": [
+                      "owner",
+                      "manager"
+                    ]
+                  }
+                },
+                {
+                  "data.user_email": "{{user.email}}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": "owner"
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
