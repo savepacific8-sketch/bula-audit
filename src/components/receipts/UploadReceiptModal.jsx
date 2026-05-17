@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const fileInputRef = useRef(null);
   const [form, setForm] = useState({
     supplier_name: '', supplier_tin: '', receipt_number: '',
     receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: company?.vat_rate || 12.5,
@@ -32,15 +34,15 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     item_lines: [], ai_confidence: null, ai_missing_fields: []
   });
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const processFile = useCallback(async (file) => {
     if (!file) return;
+    // Reset input so iOS fires onChange again if same photo is reselected
+    setFileInputKey(k => k + 1);
     setUploading(true);
+    setStep('extract');
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
-      // Auto-extract immediately after upload
-      setStep('extract');
       setExtracting(true);
       try {
         const result = await extractReceiptData(file_url);
@@ -70,9 +72,19 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
       }
     } catch (err) {
       toast.error('Failed to upload photo');
+      setStep('upload');
     } finally {
       setUploading(false);
     }
+  }, [company]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handlePickFile = () => {
+    fileInputRef.current?.click();
   };
 
   const handleSave = async () => {
@@ -113,6 +125,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
   const handleClose = () => {
     setStep('upload');
     setPhotoUrl('');
+    setFileInputKey(k => k + 1);
     setForm({
       supplier_name: '', supplier_tin: '', receipt_number: '',
       receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: company?.vat_rate || 12.5,
@@ -140,38 +153,50 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
   const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   return (
+    <>
+    {/* File input lives OUTSIDE the Dialog to avoid iOS Safari focus-trap issues */}
+    <input
+      key={fileInputKey}
+      ref={fileInputRef}
+      type="file"
+      accept="image/*,application/pdf"
+      style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0 }}
+      onChange={handleFileChange}
+    />
+
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {step === 'upload' && 'Upload Receipt'}
-            {step === 'extract' && 'Extract Data'}
+            {step === 'extract' && 'Scanning Receipt…'}
             {step === 'review' && 'Review & Save'}
           </DialogTitle>
         </DialogHeader>
 
         {step === 'upload' && (
           <div className="space-y-4">
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/50 transition-colors">
-              {uploading ? (
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              ) : (
-                <>
-                  <Camera className="w-10 h-10 text-muted-foreground mb-3" />
-                  <p className="text-sm font-medium">Take a photo or choose a file</p>
-                  <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, PDF</p>
-                </>
-              )}
-              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
-            </label>
+            <button
+              type="button"
+              onClick={handlePickFile}
+              className="w-full flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/50 active:border-primary transition-colors bg-transparent"
+            >
+              <Camera className="w-10 h-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">Take a photo or choose a file</p>
+              <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, PDF</p>
+            </button>
           </div>
         )}
 
         {step === 'extract' && (
           <div className="flex flex-col items-center justify-center py-12 space-y-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm font-medium">Reading receipt with AI...</p>
-            <p className="text-xs text-muted-foreground">This takes a few seconds</p>
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <p className="text-sm font-medium">
+              {uploading ? 'Uploading photo…' : 'Scanning with AI…'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {uploading ? 'Please wait' : 'Extracting receipt details, this takes a few seconds'}
+            </p>
           </div>
         )}
 
@@ -246,5 +271,6 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
