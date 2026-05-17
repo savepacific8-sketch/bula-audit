@@ -16,6 +16,7 @@ import CompanyProfile from '@/pages/CompanyProfile';
 import Onboarding from '@/pages/Onboarding';
 import UploadReceipt from '@/pages/UploadReceipt';
 import ReceiptReview from '@/pages/ReceiptReview';
+import ReceiptScannerAgent from '@/pages/ReceiptScannerAgent';
 
 const AppContent = () => {
   const { company, loading, refreshContext } = useCompany();
@@ -45,6 +46,7 @@ const AppContent = () => {
         <Route path="/company" element={<CompanyProfile />} />
         <Route path="/upload" element={<UploadReceipt />} />
         <Route path="/receipt-review" element={<ReceiptReview />} />
+        <Route path="/receipt-scanner" element={<ReceiptScannerAgent />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
