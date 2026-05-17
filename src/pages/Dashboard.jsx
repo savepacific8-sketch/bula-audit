@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { DollarSign, Receipt, Clock, CheckCircle2, XCircle, TrendingUp, ShoppingBag, AlertTriangle, ArrowRight, Users } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
+import ClearTestReceipts from '@/components/dashboard/ClearTestReceipts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,11 +106,14 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 pb-8">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold">Dashboard</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">Dashboard</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <ClearTestReceipts onCleared={() => window.location.reload()} />
       </div>
 
       {/* Stat Cards — 2 cols on mobile, 3 on md */}
