@@ -174,7 +174,7 @@ export default function Team() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Team"
+        title="Your Team"
         subtitle={`${activeMembers.length} active member${activeMembers.length !== 1 ? 's' : ''}`}
         action={canManageTeam && (
           <Button
@@ -199,7 +199,7 @@ export default function Team() {
         {/* Active Members */}
         <TabsContent value="members" className="space-y-3 mt-4">
           {activeMembers.length === 0 && (
-            <Card className="p-8 text-center text-muted-foreground text-sm">No team members yet.</Card>
+            <Card className="p-8 text-center text-muted-foreground text-sm">No team members yet — invite someone to get started.</Card>
           )}
           {activeMembers.map(member => {
             const role = roleMap[member.role];

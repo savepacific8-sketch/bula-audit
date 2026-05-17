@@ -117,7 +117,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 pb-8">
       <PageHeader
-        title={`Bula, Business Dashboard`}
+        title="Bula, welcome back"
         subtitle={now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
         action={<ClearTestReceipts />}
       />
@@ -197,7 +197,10 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {recentReceipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No receipts yet</p>
+            <div className="text-center py-8 space-y-1">
+              <p className="text-sm text-muted-foreground">No receipts yet</p>
+              <p className="text-xs text-muted-foreground">Upload your first receipt to start tracking your business expenses.</p>
+            </div>
           ) : (
             <div className="space-y-0">
               {recentReceipts.map(r => (

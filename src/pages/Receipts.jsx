@@ -43,7 +43,7 @@ export default function Receipts() {
     <div className="space-y-4">
       <PageHeader
         title="Receipts"
-        subtitle="All business expense receipts"
+        subtitle="All your business expense receipts"
         action={canUpload && (
           <Button
             onClick={() => setShowUpload(true)}
@@ -81,10 +81,11 @@ export default function Receipts() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-muted-foreground">No receipts found</p>
+          <p className="text-muted-foreground font-medium">No receipts yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Upload your first receipt to start tracking your business expenses.</p>
           {canUpload && (
-            <Button variant="outline" className="mt-3" onClick={() => setShowUpload(true)}>
-              Upload your first receipt
+            <Button variant="outline" className="mt-4" onClick={() => setShowUpload(true)}>
+              Upload Receipt
             </Button>
           )}
         </div>

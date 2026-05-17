@@ -288,7 +288,7 @@ export default function Reports() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 pb-8">
-      <PageHeader title="Monthly Report" subtitle={periodLabel} />
+      <PageHeader title="Business Reports" subtitle={periodLabel} />
 
       {/* Filter bar */}
       <Card>

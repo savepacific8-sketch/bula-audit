@@ -63,7 +63,7 @@ export default function CompanyProfile() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Company Profile" subtitle="Your business details and VAT settings" />
+      <PageHeader title="Business Profile" subtitle="Your business details and VAT settings" />
 
       <Card>
         <CardHeader>

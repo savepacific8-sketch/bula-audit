@@ -281,7 +281,7 @@ export default function TaxReports() {
     <div className="space-y-5 pb-8">
       <PageHeader
         title="VAT Summary"
-        subtitle={`VAT Input Credits — FRCS Formatted · ${periodLabel}`}
+        subtitle={`Input tax credits — FRCS formatted · ${periodLabel}`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadCSV} className="gap-1.5 text-xs h-8 bg-white/10 border-white/20 text-white hover:bg-white/20" disabled={!creditEligible.length}>
