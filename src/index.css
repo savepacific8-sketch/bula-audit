@@ -116,3 +116,40 @@
     @apply bg-background text-foreground font-inter;
   }
 }
+
+/* ── Global Design System Utilities ────────────────────────── */
+
+/* Cards: white, rounded, soft shadow */
+.ds-card {
+  @apply bg-card rounded-2xl shadow-sm border border-border;
+}
+
+/* Section label / eyebrow text */
+.ds-label {
+  @apply text-[11px] font-semibold uppercase tracking-widest text-muted-foreground;
+}
+
+/* Status badges */
+.ds-badge-pending  { @apply bg-amber-100 text-amber-700 border border-amber-200; }
+.ds-badge-approved { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
+.ds-badge-rejected { @apply bg-rose-100 text-rose-700 border border-rose-200; }
+
+/* Approve / Reject action button base */
+.ds-btn-approve {
+  @apply bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-colors;
+}
+.ds-btn-reject {
+  @apply bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl shadow-sm transition-colors;
+}
+.ds-btn-primary {
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl shadow-sm transition-colors;
+}
+.ds-btn-accent {
+  @apply text-white font-semibold rounded-xl shadow-sm transition-colors;
+  background: hsl(var(--accent));
+}
+.ds-btn-accent:hover {
+  background: hsl(var(--accent) / 0.9);
+}
+
+/* Masi pattern already defined above */

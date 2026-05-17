@@ -206,15 +206,21 @@ export default function ReceiptReview() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/receipts')}>
+      <div
+        className="sticky top-0 z-10 border-b border-border px-4 flex items-center gap-3 bg-background/95 backdrop-blur"
+        style={{
+          paddingTop: 'max(10px, env(safe-area-inset-top, 10px))',
+          paddingBottom: '10px',
+        }}
+      >
+        <Button variant="ghost" size="icon" onClick={() => navigate('/receipts')} className="shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-semibold text-base truncate">Receipt Review</h1>
+          <h1 className="font-semibold text-base truncate font-poppins">Receipt Review</h1>
           <p className="text-xs text-muted-foreground truncate">{receipt.supplier_name || 'No supplier'}</p>
         </div>
-        <Badge className={status.className}>
+        <Badge className={`${status.className} shrink-0`}>
           <StatusIcon className="w-3 h-3 mr-1" />
           {status.label}
         </Badge>
@@ -456,22 +462,25 @@ export default function ReceiptReview() {
       </div>
 
       {/* Sticky Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 flex gap-2 max-w-2xl mx-auto">
+      <div
+        className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-4 pt-3 flex gap-2 max-w-2xl mx-auto"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
+      >
         <Button
           variant="outline"
           onClick={handleSave}
           disabled={saving}
-          className="flex-1 gap-1.5"
+          className="flex-1 gap-1.5 h-11 rounded-xl font-semibold border-border"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Changes
+          Save
         </Button>
 
         {canApprove && receipt.status !== 'approved' && (
           <Button
             onClick={() => handleStatusChange('approved')}
             disabled={saving}
-            className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+            className="flex-1 gap-1.5 h-11 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Approve
@@ -482,8 +491,7 @@ export default function ReceiptReview() {
           <Button
             onClick={() => handleStatusChange('rejected')}
             disabled={saving}
-            variant="destructive"
-            className="flex-1 gap-1.5"
+            className="flex-1 gap-1.5 h-11 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-sm"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
             Reject

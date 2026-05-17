@@ -25,18 +25,22 @@ const statusBadge = (status) => {
 function StatCard({ title, value, icon: Icon, accentColor, sub }) {
   return (
     <div className="rounded-2xl p-4 bg-card border border-border shadow-sm flex flex-col gap-1 relative overflow-hidden">
+      {/* Top accent stripe */}
       <div
-        className="absolute top-0 left-0 right-0 h-0.5"
+        className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
         style={{ background: accentColor || 'hsl(var(--primary))' }}
       />
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{title}</span>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: accentColor ? accentColor + '20' : 'hsl(var(--primary)/0.12)' }}>
+      <div className="flex items-start justify-between mb-2 mt-1">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest leading-tight">{title}</span>
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ml-1"
+          style={{ background: (accentColor || 'hsl(var(--primary))') + '22' }}
+        >
           <Icon className="w-3.5 h-3.5" style={{ color: accentColor || 'hsl(var(--primary))' }} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-foreground leading-none">{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="text-2xl font-bold text-foreground leading-none tracking-tight">{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
