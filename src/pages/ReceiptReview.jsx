@@ -124,36 +124,46 @@ export default function ReceiptReview() {
 
   const handleSave = async () => {
     setSaving(true);
-    await base44.entities.Receipt.update(receipt.id, {
-      supplier_name:  form.supplier_name  || undefined,
-      supplier_tin:   form.supplier_tin   || undefined,
-      receipt_number: form.receipt_number || undefined,
-      receipt_date:   form.receipt_date   || undefined,
-      currency:       form.currency       || 'FJD',
-      vat_type:       form.vat_type       || undefined,
-      subtotal:       form.subtotal !== '' ? Number(form.subtotal) : undefined,
-      vat_rate:       form.vat_rate !== '' ? Number(form.vat_rate) : undefined,
-      vat_amount:     form.vat_amount !== '' ? Number(form.vat_amount) : undefined,
-      total_amount:   form.total_amount !== '' ? Number(form.total_amount) : undefined,
-      payment_method: form.payment_method || undefined,
-      category:       form.category       || undefined,
-      notes:          form.notes          || undefined,
-    });
-    toast.success('Changes saved');
-    setSaving(false);
+    try {
+      await base44.entities.Receipt.update(receipt.id, {
+        supplier_name:  form.supplier_name  || undefined,
+        supplier_tin:   form.supplier_tin   || undefined,
+        receipt_number: form.receipt_number || undefined,
+        receipt_date:   form.receipt_date   || undefined,
+        currency:       form.currency       || 'FJD',
+        vat_type:       form.vat_type       || undefined,
+        subtotal:       form.subtotal !== '' ? Number(form.subtotal) : undefined,
+        vat_rate:       form.vat_rate !== '' ? Number(form.vat_rate) : undefined,
+        vat_amount:     form.vat_amount !== '' ? Number(form.vat_amount) : undefined,
+        total_amount:   form.total_amount !== '' ? Number(form.total_amount) : undefined,
+        payment_method: form.payment_method || undefined,
+        category:       form.category       || undefined,
+        notes:          form.notes          || undefined,
+      });
+      toast.success('Changes saved');
+    } catch {
+      toast.error('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleStatusChange = async (newStatus) => {
     setSaving(true);
-    const user = await base44.auth.me();
-    await base44.entities.Receipt.update(receipt.id, {
-      status:        newStatus,
-      reviewed_by:   user.email,
-      reviewed_date: new Date().toISOString(),
-    });
-    toast.success(`Receipt ${newStatus}`);
-    setReceipt(prev => ({ ...prev, status: newStatus, reviewed_by: user.email }));
-    setSaving(false);
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.Receipt.update(receipt.id, {
+        status:        newStatus,
+        reviewed_by:   user.email,
+        reviewed_date: new Date().toISOString(),
+      });
+      toast.success(`Receipt ${newStatus}`);
+      setReceipt(prev => ({ ...prev, status: newStatus, reviewed_by: user.email }));
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRescan = async () => {

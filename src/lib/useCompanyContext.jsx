@@ -24,12 +24,13 @@ export function CompanyProvider({ children }) {
         if (companies.length > 0) {
           setCompany(companies[0]);
         }
+        // company stays null if not found — triggers onboarding
       } else {
         // Check if user owns a company
         const ownedCompanies = await base44.entities.Company.filter({ owner_email: user.email });
         if (ownedCompanies.length > 0) {
           setCompany(ownedCompanies[0]);
-          // Create owner team member record
+          // Create owner team member record if missing
           const existingMember = await base44.entities.TeamMember.filter({ 
             company_id: ownedCompanies[0].id, 
             user_email: user.email 
@@ -47,6 +48,7 @@ export function CompanyProvider({ children }) {
             setTeamMember(existingMember[0]);
           }
         }
+        // if no owned company either, company stays null — triggers onboarding
       }
     } catch (e) {
       console.error('Error loading company context:', e);
