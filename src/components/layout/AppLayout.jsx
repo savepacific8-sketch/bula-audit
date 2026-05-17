@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, PlusCircle, Shield } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 
@@ -7,6 +7,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/receipts', label: 'Receipts', icon: Receipt },
   { path: '/reports', label: 'Reports', icon: FileText },
+  { path: '/tax-reports', label: 'Tax Reports', icon: Shield, restricted: true },
   { path: '/team', label: 'Team', icon: Users },
   { path: '/company', label: 'Company', icon: Building2 },
 ];
@@ -17,6 +18,7 @@ export default function AppLayout() {
 
   const filteredNav = navItems.filter(item => {
     if (item.path === '/team' && userRole !== 'owner' && userRole !== 'manager') return false;
+    if (item.restricted && userRole !== 'owner' && userRole !== 'manager' && userRole !== 'accountant') return false;
     return true;
   });
 
