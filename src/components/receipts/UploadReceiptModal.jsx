@@ -162,7 +162,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
                   <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, PDF</p>
                 </>
               )}
-              <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handleFileUpload} />
+              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
             </label>
           </div>
         )}
