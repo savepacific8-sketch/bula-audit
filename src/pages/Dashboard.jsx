@@ -7,13 +7,14 @@ import { DollarSign, Receipt, Clock, CheckCircle2, XCircle, TrendingUp, Shopping
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
 import ClearTestReceipts from '@/components/dashboard/ClearTestReceipts';
+import PageHeader from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format } from 'date-fns';
 
-const COLORS = ['hsl(174,62%,32%)', 'hsl(36,80%,56%)', 'hsl(210,60%,50%)', 'hsl(150,50%,45%)', 'hsl(0,72%,51%)'];
+const COLORS = ['hsl(178,58%,30%)', 'hsl(20,88%,54%)', 'hsl(210,60%,45%)', 'hsl(150,48%,42%)', 'hsl(0,72%,51%)'];
 
 const statusBadge = (status) => {
   if (status === 'approved') return 'bg-emerald-100 text-emerald-700';
@@ -21,15 +22,21 @@ const statusBadge = (status) => {
   return 'bg-amber-100 text-amber-700';
 };
 
-function StatCard({ title, value, icon: Icon, color, sub }) {
+function StatCard({ title, value, icon: Icon, accentColor, sub }) {
   return (
-    <div className={`rounded-xl p-4 ${color} flex flex-col gap-1`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground/70">{title}</span>
-        <Icon className="w-4 h-4 text-foreground/50" />
+    <div className="rounded-2xl p-4 bg-card border border-border shadow-sm flex flex-col gap-1 relative overflow-hidden">
+      <div
+        className="absolute top-0 left-0 right-0 h-0.5"
+        style={{ background: accentColor || 'hsl(var(--primary))' }}
+      />
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{title}</span>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: accentColor ? accentColor + '20' : 'hsl(var(--primary)/0.12)' }}>
+          <Icon className="w-3.5 h-3.5" style={{ color: accentColor || 'hsl(var(--primary))' }} />
+        </div>
       </div>
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      <p className="text-2xl font-bold text-foreground leading-none">{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -105,24 +112,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-        <ClearTestReceipts />
-      </div>
+      <PageHeader
+        title={`Bula, Business Dashboard`}
+        subtitle={now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+        action={<ClearTestReceipts />}
+      />
 
       {/* Stat Cards — 2 cols on mobile, 3 on md */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatCard title="Expenses (Month)" value={formatFJD(totalExpenses)} icon={DollarSign} color="bg-primary/10" sub="approved only" />
-        <StatCard title="VAT (Month)" value={formatFJD(totalVAT)} icon={TrendingUp} color="bg-accent/20" sub="approved only" />
-        <StatCard title="Pending" value={pendingCount} icon={Clock} color="bg-amber-50" sub="awaiting review" />
-        <StatCard title="Approved" value={approvedCount} icon={CheckCircle2} color="bg-emerald-50" sub="all time" />
-        <StatCard title="Rejected" value={rejectedCount} icon={XCircle} color="bg-red-50" sub="all time" />
+        <StatCard title="Expenses (Month)" value={formatFJD(totalExpenses)} icon={DollarSign} accentColor="hsl(178,58%,30%)" sub="approved only" />
+        <StatCard title="VAT Input Credit" value={formatFJD(totalVAT)} icon={TrendingUp} accentColor="hsl(20,88%,54%)" sub="approved only" />
+        <StatCard title="Pending Review" value={pendingCount} icon={Clock} accentColor="hsl(38,80%,50%)" sub="awaiting review" />
+        <StatCard title="Approved" value={approvedCount} icon={CheckCircle2} accentColor="hsl(150,48%,42%)" sub="all time" />
+        <StatCard title="Rejected" value={rejectedCount} icon={XCircle} accentColor="hsl(0,72%,51%)" sub="all time" />
       </div>
 
       {/* Top Categories */}

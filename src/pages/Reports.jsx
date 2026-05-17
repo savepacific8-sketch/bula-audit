@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Download, FileText } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { jsPDF } from 'jspdf';
+import PageHeader from '@/components/layout/PageHeader';
 
 const COLORS = ['hsl(174,62%,32%)', 'hsl(36,80%,56%)', 'hsl(210,60%,50%)', 'hsl(150,50%,45%)', 'hsl(0,72%,51%)', 'hsl(280,60%,50%)', 'hsl(50,70%,50%)'];
 
@@ -287,11 +288,7 @@ export default function Reports() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 pb-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold">Reports</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">{periodLabel}</p>
-      </div>
+      <PageHeader title="Monthly Report" subtitle={periodLabel} />
 
       {/* Filter bar */}
       <Card>

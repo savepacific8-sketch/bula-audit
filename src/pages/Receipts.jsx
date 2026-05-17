@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import ReceiptCard from '@/components/receipts/ReceiptCard';
 import UploadReceiptModal from '@/components/receipts/UploadReceiptModal';
+import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,14 +41,19 @@ export default function Receipts() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Receipts</h1>
-        {canUpload && (
-          <Button onClick={() => setShowUpload(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Upload
+      <PageHeader
+        title="Receipts"
+        subtitle="All business expense receipts"
+        action={canUpload && (
+          <Button
+            onClick={() => setShowUpload(true)}
+            className="gap-2 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow"
+            style={{ background: 'hsl(var(--accent))' }}
+          >
+            <Plus className="w-4 h-4" /> Upload Receipt
           </Button>
         )}
-      </div>
+      />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

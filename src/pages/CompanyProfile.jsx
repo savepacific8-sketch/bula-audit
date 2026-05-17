@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Save, Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PageHeader from '@/components/layout/PageHeader';
 
 export default function CompanyProfile() {
   const { company, setCompany, userRole } = useCompany();
@@ -62,7 +63,7 @@ export default function CompanyProfile() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Company Profile</h1>
+      <PageHeader title="Company Profile" subtitle="Your business details and VAT settings" />
 
       <Card>
         <CardHeader>

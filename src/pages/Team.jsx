@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
+import PageHeader from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -172,20 +173,19 @@ export default function Team() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" /> Team
-          </h1>
-          <p className="text-sm text-muted-foreground">{activeMembers.length} active member{activeMembers.length !== 1 ? 's' : ''}</p>
-        </div>
-        {canManageTeam && (
-          <Button onClick={() => setShowAdd(true)} className="gap-2">
+      <PageHeader
+        title="Team"
+        subtitle={`${activeMembers.length} active member${activeMembers.length !== 1 ? 's' : ''}`}
+        action={canManageTeam && (
+          <Button
+            onClick={() => setShowAdd(true)}
+            className="gap-2 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow"
+            style={{ background: 'hsl(var(--accent))' }}
+          >
             <UserPlus className="w-4 h-4" /> Invite Member
           </Button>
         )}
-      </div>
+      />
 
       <Tabs defaultValue="members">
         <TabsList>

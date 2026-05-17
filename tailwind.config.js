@@ -5,7 +5,8 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			inter: ['var(--font-inter)']
+  			inter: ['var(--font-inter)'],
+  			poppins: ['var(--font-poppins)']
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -15,6 +16,8 @@ module.exports = {
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
+  			'fiji-deep': 'hsl(var(--fiji-deep))',
+  			sand: 'hsl(var(--sand))',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

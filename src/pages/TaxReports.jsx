@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Download, FileText, Shield, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { jsPDF } from 'jspdf';
+import PageHeader from '@/components/layout/PageHeader';
 
 const CATEGORIES = [
   'office_supplies','utilities','rent','transport','food_beverage','equipment',
@@ -278,26 +279,20 @@ export default function TaxReports() {
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <h1 className="text-xl font-bold">Tax Reports</h1>
+      <PageHeader
+        title="VAT Summary"
+        subtitle={`VAT Input Credits — FRCS Formatted · ${periodLabel}`}
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadCSV} className="gap-1.5 text-xs h-8 bg-white/10 border-white/20 text-white hover:bg-white/20" disabled={!creditEligible.length}>
+              <Download className="w-3 h-3" /> CSV
+            </Button>
+            <Button size="sm" onClick={handleDownloadPDF} className="gap-1.5 text-xs h-8 text-white" style={{ background: 'hsl(var(--accent))' }} disabled={!creditEligible.length}>
+              <FileText className="w-3 h-3" /> FRCS PDF
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            VAT Input Credits — FRCS Formatted · Fiji VAT Decree 1991 (s.41)
-          </p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={handleDownloadCSV} className="gap-1.5 text-xs h-8" disabled={!creditEligible.length}>
-            <Download className="w-3 h-3" /> CSV
-          </Button>
-          <Button size="sm" onClick={handleDownloadPDF} className="gap-1.5 text-xs h-8" disabled={!creditEligible.length}>
-            <FileText className="w-3 h-3" /> FRCS PDF
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Period selector */}
       <Card>
