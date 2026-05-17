@@ -122,13 +122,10 @@ export default function AppLayout() {
         style={{
           background: 'hsl(var(--fiji-deep))',
           borderColor: 'rgba(255,255,255,0.10)',
-          paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
         }}
       >
-        <div
-          className="flex items-center"
-          style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', overflowX: 'auto' }}
-        >
+        <div className="flex items-center">
           {/* First 2 nav items */}
           {filteredNav.slice(0, 2).map(item => {
             const isActive = location.pathname === item.path;
@@ -211,7 +208,7 @@ export default function AppLayout() {
         className="flex-1 md:ml-64"
         style={{
           paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))',
-          paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 20px))',
+          paddingBottom: 'calc(72px + max(env(safe-area-inset-bottom, 0px), 8px))',
         }}
       >
         <div className="p-4 md:p-8 md:pt-6 max-w-6xl mx-auto">
