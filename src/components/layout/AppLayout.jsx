@@ -122,11 +122,9 @@ export default function AppLayout() {
         style={{
           background: 'hsl(var(--fiji-deep))',
           borderColor: 'rgba(255,255,255,0.10)',
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
-          paddingTop: '8px',
         }}
       >
-        <div className="flex items-center">
+        <div className="flex items-center py-2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}>
           {/* First 2 nav items */}
           {filteredNav.slice(0, 2).map(item => {
             const isActive = location.pathname === item.path;
@@ -134,7 +132,7 @@ export default function AppLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 relative transition-colors"
+                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-1.5 relative transition-colors"
               >
                 {isActive && (
                   <span
@@ -145,7 +143,7 @@ export default function AppLayout() {
                 <item.icon
                   className={`w-[20px] h-[20px] shrink-0 ${isActive ? 'text-white' : 'text-white/45'}`}
                 />
-                <span className={`text-[10px] font-medium mt-1 whitespace-nowrap ${isActive ? 'text-white' : 'text-white/45'}`}>
+                <span className={`text-[10px] font-medium mt-0.5 whitespace-nowrap ${isActive ? 'text-white' : 'text-white/45'}`}>
                   {item.label}
                 </span>
               </Link>
@@ -156,7 +154,7 @@ export default function AppLayout() {
           {canUpload && (
             <Link
               to="/upload"
-              className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5"
+              className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-1.5"
             >
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
@@ -175,7 +173,7 @@ export default function AppLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 relative transition-colors"
+                className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-1.5 relative transition-colors"
               >
                 {isActive && (
                   <span
@@ -186,7 +184,7 @@ export default function AppLayout() {
                 <item.icon
                   className={`w-[20px] h-[20px] shrink-0 ${isActive ? 'text-white' : 'text-white/45'}`}
                 />
-                <span className={`text-[10px] font-medium mt-1 whitespace-nowrap ${isActive ? 'text-white' : 'text-white/45'}`}>
+                <span className={`text-[10px] font-medium mt-0.5 whitespace-nowrap ${isActive ? 'text-white' : 'text-white/45'}`}>
                   {item.label}
                 </span>
               </Link>
@@ -196,10 +194,10 @@ export default function AppLayout() {
           {/* Sign Out */}
           <button
             onClick={handleLogout}
-            className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-2.5 text-white/35 transition-colors"
+            className="flex flex-col items-center justify-center flex-1 min-w-[48px] py-1.5 text-white/35 transition-colors"
           >
             <LogOut className="w-[20px] h-[20px] shrink-0" />
-            <span className="text-[10px] font-medium mt-1 whitespace-nowrap">Sign Out</span>
+            <span className="text-[10px] font-medium mt-0.5 whitespace-nowrap">Sign Out</span>
           </button>
         </div>
       </nav>
@@ -209,7 +207,7 @@ export default function AppLayout() {
         className="flex-1 md:ml-64 overflow-y-auto"
         style={{
           paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))',
-          paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
           height: '100svh',
         }}
       >
