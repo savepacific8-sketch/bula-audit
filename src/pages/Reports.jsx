@@ -77,7 +77,7 @@ export default function Reports() {
   const { company } = useCompany();
   const now = new Date();
 
-  const [filterMode, setFilterMode] = useState('this_month'); // this_month | last_month | custom
+  const [filterMode, setFilterMode] = useState('this_month'); // this_month | last_month | all_time | custom
   const [customFrom, setCustomFrom] = useState(format(startOfMonth(now), 'yyyy-MM-dd'));
   const [customTo, setCustomTo] = useState(format(endOfMonth(now), 'yyyy-MM-dd'));
 
@@ -100,6 +100,9 @@ export default function Reports() {
     if (filterMode === 'last_month') {
       const lm = subMonths(now, 1);
       return { fromDate: startOfMonth(lm), toDate: endOfMonth(lm), periodLabel: format(lm, 'MMMM yyyy') };
+    }
+    if (filterMode === 'all_time') {
+      return { fromDate: new Date('2000-01-01'), toDate: new Date('2100-12-31'), periodLabel: 'All Time' };
     }
     // custom
     const from = customFrom ? new Date(customFrom) : startOfMonth(now);
@@ -293,14 +296,19 @@ export default function Reports() {
       {/* Filter bar */}
       <Card>
         <CardContent className="p-3 space-y-3">
-          <div className="flex gap-2">
-            {['this_month', 'last_month', 'custom'].map(m => (
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'this_month', label: 'This Month' },
+              { key: 'last_month', label: 'Last Month' },
+              { key: 'all_time', label: 'All Time' },
+              { key: 'custom', label: 'Custom' },
+            ].map(({ key, label }) => (
               <button
-                key={m}
-                onClick={() => setFilterMode(m)}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors border ${filterMode === m ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-transparent text-muted-foreground hover:bg-muted'}`}
+                key={key}
+                onClick={() => setFilterMode(key)}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors border cursor-pointer ${filterMode === key ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-transparent text-muted-foreground hover:bg-muted'}`}
               >
-                {m === 'this_month' ? 'This Month' : m === 'last_month' ? 'Last Month' : 'Custom'}
+                {label}
               </button>
             ))}
           </div>
