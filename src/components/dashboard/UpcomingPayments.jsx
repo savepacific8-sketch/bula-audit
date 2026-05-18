@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { CalendarClock, ArrowRight, AlertCircle } from 'lucide-react';
 import { formatFJD } from '@/lib/formatCurrency';
+import { cn } from '@/lib/utils';
 
 function dueBadge(dueDateStr) {
   const d = new Date(dueDateStr);
@@ -53,11 +54,16 @@ export default function UpcomingPayments({ receipts }) {
       <div className="px-4 pb-3 mt-1">
         {upcoming.map(r => {
           const badge = dueBadge(r.due_date);
+          const days = differenceInDays(new Date(r.due_date), new Date());
+          const isUrgent = (isPast(new Date(r.due_date)) && !isToday(new Date(r.due_date))) || days <= 3;
           return (
             <Link
               key={r.id}
               to={`/receipt-review?id=${r.id}`}
-              className="flex items-center justify-between py-2.5 border-b border-black/5 last:border-0 hover:bg-black/5 px-1 rounded transition-colors"
+              className={cn(
+                "flex items-center justify-between py-2.5 border-b border-black/5 last:border-0 px-1 rounded transition-colors",
+                isUrgent ? "hover:bg-rose-100/60 bg-rose-50/50" : "hover:bg-black/5"
+              )}
             >
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium truncate">{r.supplier_name || 'Unknown Supplier'}</p>

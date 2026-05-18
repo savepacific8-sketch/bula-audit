@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import UpcomingPayments from '@/components/dashboard/UpcomingPayments';
+import DueSoonAlert from '@/components/dashboard/DueSoonAlert';
 import PullToRefresh from '@/components/layout/PullToRefresh';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
 import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/DashboardPeriodFilter';
@@ -204,6 +205,9 @@ export default function Dashboard() {
 
       {/* Hero */}
       <DashboardHero company={company} month={month} />
+
+      {/* Due Soon Alert */}
+      <DueSoonAlert receipts={receipts} />
 
       {/* Period Filter */}
       <DashboardPeriodFilter period={period} onChange={setPeriod} />
