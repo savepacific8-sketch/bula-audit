@@ -20,11 +20,14 @@ export default function UploadGuard({ children }) {
   let showUpgrade = userRole === 'owner';
 
   if (limitReached) {
-    title = 'Monthly Limit Reached';
-    message = `You've used all your receipts for this month. Upgrade your plan to upload more.`;
+    title = 'Monthly Receipt Limit Reached';
+    message = `You have reached your monthly receipt limit for your current plan. Upgrade your plan to continue uploading receipts.`;
+  } else if (subscription?.status === 'overdue') {
+    title = 'Payment Overdue';
+    message = 'Your subscription payment is overdue. You can still view your data, but receipt uploads and report exports are temporarily paused until payment is confirmed.';
   } else if (isExpired || subscription?.status === 'suspended') {
     title = subscription?.status === 'suspended' ? 'Account Suspended' : 'Subscription Expired';
-    message = 'Your subscription is not active. Please renew to continue uploading receipts.';
+    message = 'Your subscription payment is overdue. You can still view your data, but receipt uploads and report exports are temporarily paused until payment is confirmed.';
   } else if (!subscription) {
     title = 'No Active Plan';
     message = 'Choose a subscription plan to start uploading receipts.';

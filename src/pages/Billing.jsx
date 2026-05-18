@@ -156,8 +156,7 @@ export default function Billing() {
               {subscription?.status === 'suspended' ? 'Account Suspended' : 'Subscription Expired'}
             </p>
             <p className="text-xs text-rose-600 mt-0.5">
-              Receipt uploads and exports are paused. Your data is safe.
-              {canManage && ' Please renew your subscription to reactivate.'}
+              Your subscription payment is overdue. You can still view your data, but receipt uploads and report exports are temporarily paused until payment is confirmed.
             </p>
           </div>
         </div>
@@ -168,8 +167,8 @@ export default function Billing() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold text-amber-800 text-sm">Monthly receipt limit reached</p>
-            <p className="text-xs text-amber-600 mt-0.5">Upgrade your plan to upload more receipts this month.</p>
+            <p className="font-semibold text-amber-800 text-sm">Monthly Receipt Limit Reached</p>
+            <p className="text-xs text-amber-600 mt-0.5">You have reached your monthly receipt limit for your current plan. Upgrade your plan to continue uploading receipts.</p>
           </div>
           {canManage && (
             <Button size="sm" className="shrink-0 text-xs h-8" onClick={() => setShowPlans(true)}>Upgrade</Button>
