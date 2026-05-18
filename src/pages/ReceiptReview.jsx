@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { extractReceiptData } from '@/lib/extractReceipt.js';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobileSelect } from '@/components/ui/MobileSelect';
 import { toast } from 'sonner';
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, Loader2,
@@ -153,23 +153,40 @@ export default function ReceiptReview() {
     }
   };
 
-  const handleStatusChange = async (newStatus) => {
-    setSaving(true);
-    try {
+  const statusMutation = useMutation({
+    mutationFn: async (newStatus) => {
       const user = await base44.auth.me();
       await base44.entities.Receipt.update(receipt.id, {
         status:        newStatus,
         reviewed_by:   user.email,
         reviewed_date: new Date().toISOString(),
       });
+      return { newStatus, userEmail: user.email };
+    },
+    onMutate: (newStatus) => {
+      // Optimistic update — badge changes instantly
+      setReceipt(prev => ({ ...prev, status: newStatus }));
+      // Also update the list cache optimistically
+      queryClient.setQueriesData({ queryKey: ['receipts'] }, (old) =>
+        old?.map(r => r.id === receipt.id ? { ...r, status: newStatus } : r)
+      );
+    },
+    onSuccess: ({ newStatus, userEmail }) => {
+      setReceipt(prev => ({ ...prev, status: newStatus, reviewed_by: userEmail }));
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
       toast.success(`Receipt ${newStatus}`);
-      setReceipt(prev => ({ ...prev, status: newStatus, reviewed_by: user.email }));
-    } catch {
+    },
+    onError: (_err, newStatus, _ctx) => {
+      // Roll back the optimistic update
+      setReceipt(prev => ({ ...prev, status: prev._prevStatus || 'pending' }));
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
       toast.error('Failed to update status');
-    } finally {
-      setSaving(false);
-    }
+    },
+  });
+
+  const handleStatusChange = (newStatus) => {
+    setReceipt(prev => ({ ...prev, _prevStatus: prev.status }));
+    statusMutation.mutate(newStatus);
   };
 
   const handleRescan = async () => {
@@ -326,14 +343,11 @@ export default function ReceiptReview() {
           {/* VAT Type */}
           <div className="space-y-1">
             <Label className="text-xs">VAT Type</Label>
-            <Select value={form.vat_type} onValueChange={handleVatTypeChange}>
-              <SelectTrigger><SelectValue placeholder="Select VAT type…" /></SelectTrigger>
-              <SelectContent>
-                {VAT_TYPES.map(t => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MobileSelect value={form.vat_type} onValueChange={handleVatTypeChange} placeholder="Select VAT type…">
+              {VAT_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </MobileSelect>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -399,26 +413,20 @@ export default function ReceiptReview() {
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="space-y-1">
               <Label className="text-xs">Payment Method</Label>
-              <Select value={form.payment_method} onValueChange={v => field('payment_method', v)}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map(m => (
-                    <SelectItem key={m} value={m}>{m.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MobileSelect value={form.payment_method} onValueChange={v => field('payment_method', v)} placeholder="Select…">
+                {PAYMENT_METHODS.map(m => (
+                  <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>
+                ))}
+              </MobileSelect>
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs">Category</Label>
-              <Select value={form.category} onValueChange={v => field('category', v)}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => (
-                    <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MobileSelect value={form.category} onValueChange={v => field('category', v)} placeholder="Select…">
+                {CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
+                ))}
+              </MobileSelect>
             </div>
           </div>
 
@@ -495,10 +503,10 @@ export default function ReceiptReview() {
         {canApprove && receipt.status !== 'approved' && (
           <Button
             onClick={() => handleStatusChange('approved')}
-            disabled={saving}
+            disabled={saving || statusMutation.isPending}
             className="flex-1 gap-1.5 h-11 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {statusMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Approve
           </Button>
         )}
@@ -506,10 +514,10 @@ export default function ReceiptReview() {
         {canApprove && receipt.status !== 'rejected' && (
           <Button
             onClick={() => handleStatusChange('rejected')}
-            disabled={saving}
+            disabled={saving || statusMutation.isPending}
             className="flex-1 gap-1.5 h-11 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-sm"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+            {statusMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
             Reject
           </Button>
         )}
