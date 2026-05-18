@@ -189,6 +189,9 @@ export default function TaxReports() {
       const lm = subMonths(now, 1);
       return { fromDate: startOfMonth(lm), toDate: endOfMonth(lm), periodLabel: format(lm, 'MMMM yyyy') };
     }
+    if (periodMode === 'all_time') {
+      return { fromDate: new Date('2000-01-01'), toDate: new Date('2100-12-31'), periodLabel: 'All Time' };
+    }
     const from = customFrom ? new Date(customFrom) : startOfMonth(now);
     const to = customTo ? new Date(customTo + 'T23:59:59') : endOfMonth(now);
     return { fromDate: from, toDate: to, periodLabel: `${customFrom} to ${customTo}` };
@@ -297,10 +300,10 @@ export default function TaxReports() {
       {/* Period selector */}
       <Card>
         <CardContent className="p-3 space-y-3">
-          <div className="flex gap-2">
-            {[['this_month','This Month'],['last_month','Last Month'],['custom','Custom']].map(([v, l]) => (
+          <div className="flex gap-2 flex-wrap">
+            {[['this_month','This Month'],['last_month','Last Month'],['all_time','All Time'],['custom','Custom']].map(([v, l]) => (
               <button key={v} onClick={() => setPeriodMode(v)}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-medium border transition-colors ${periodMode === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium border transition-colors cursor-pointer ${periodMode === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
                 {l}
               </button>
             ))}
