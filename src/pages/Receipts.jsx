@@ -9,7 +9,8 @@ import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
+import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import PullToRefresh from '@/components/layout/PullToRefresh';
 
@@ -34,9 +35,11 @@ export default function Receipts() {
     .filter(r => {
       if (!search) return true;
       const s = search.toLowerCase();
+      const dateStr = r.receipt_date ? format(new Date(r.receipt_date), 'dd MMM yyyy').toLowerCase() : '';
       return (r.supplier_name || '').toLowerCase().includes(s) ||
              (r.receipt_number || '').toLowerCase().includes(s) ||
-             (r.category || '').toLowerCase().includes(s);
+             (r.category || '').toLowerCase().includes(s) ||
+             dateStr.includes(s);
     })
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
@@ -61,25 +64,35 @@ export default function Receipts() {
         )}
       />
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search supplier, receipt #..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="approved">Approved</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="search"
+          placeholder="Search by supplier, receipt #, or date (e.g. 15 May 2025)..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full h-11 pl-10 pr-10 rounded-xl border border-input bg-card text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 shadow-sm transition-all"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-muted hover:bg-muted-foreground/20 transition-colors"
+          >
+            <X className="w-3 h-3 text-muted-foreground" />
+          </button>
+        )}
       </div>
+
+      {/* Status filter tabs */}
+      <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="approved">Approved</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -87,12 +100,23 @@ export default function Receipts() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-muted-foreground font-medium">No receipts yet</p>
-          <p className="text-sm text-muted-foreground mt-1">Upload your first receipt to start tracking your business expenses.</p>
-          {canUpload && (
-            <Button variant="outline" className="mt-4" onClick={() => setShowUpload(true)}>
-              Upload Receipt
-            </Button>
+          {search ? (
+            <>
+              <Search className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground font-medium">No results for "{search}"</p>
+              <p className="text-sm text-muted-foreground mt-1">Try searching by supplier name, receipt number, or date.</p>
+              <Button variant="outline" className="mt-4" onClick={() => setSearch('')}>Clear search</Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground font-medium">No receipts yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Upload your first receipt to start tracking your business expenses.</p>
+              {canUpload && (
+                <Button variant="outline" className="mt-4" onClick={() => setShowUpload(true)}>
+                  Upload Receipt
+                </Button>
+              )}
+            </>
           )}
         </div>
       ) : (
