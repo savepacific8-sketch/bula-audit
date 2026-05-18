@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatFJD, formatCategory } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { Clock, CheckCircle2, XCircle, Paperclip } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Paperclip, Banknote, AlertCircle } from 'lucide-react';
 
 const statusConfig = {
   pending: { label: 'Pending', icon: Clock, className: 'bg-amber-100 text-amber-700 border-amber-200' },
@@ -10,9 +10,16 @@ const statusConfig = {
   rejected: { label: 'Rejected', icon: XCircle, className: 'bg-red-100 text-red-700 border-red-200' },
 };
 
+const paymentStatusConfig = {
+  unpaid: { label: 'Unpaid', icon: AlertCircle, className: 'bg-rose-100 text-rose-700 border-rose-200' },
+  paid: { label: 'Paid', icon: Banknote, className: 'bg-sky-100 text-sky-700 border-sky-200' },
+};
+
 export default function ReceiptCard({ receipt, onClick }) {
   const status = statusConfig[receipt.status] || statusConfig.pending;
   const StatusIcon = status.icon;
+  const payStatus = paymentStatusConfig[receipt.payment_status] || paymentStatusConfig.unpaid;
+  const PayIcon = payStatus.icon;
 
   return (
     <Card
@@ -33,7 +40,13 @@ export default function ReceiptCard({ receipt, onClick }) {
                 {receipt.receipt_date ? format(new Date(receipt.receipt_date), 'dd MMM yyyy') : 'No date'}
               </p>
             </div>
-            <p className="font-bold text-sm whitespace-nowrap">{formatFJD(receipt.total_amount)}</p>
+            <div className="flex flex-col items-end gap-1">
+              <p className="font-bold text-sm whitespace-nowrap">{formatFJD(receipt.total_amount)}</p>
+              <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${payStatus.className}`}>
+                <PayIcon className="w-3 h-3 mr-1" />
+                {payStatus.label}
+              </Badge>
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${status.className}`}>

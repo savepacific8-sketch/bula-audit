@@ -80,6 +80,15 @@
       ],
       "description": "Payment method used"
     },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "paid"
+      ],
+      "default": "unpaid",
+      "description": "Whether this invoice/receipt has been settled with the supplier"
+    },
     "category": {
       "type": "string",
       "enum": [

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatFJD, formatCategory, formatPaymentMethod } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles, RefreshCw, Banknote, AlertCircle } from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
@@ -20,6 +20,21 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
   const { canApprove } = useCompany();
   const [updating, setUpdating] = useState(false);
   const [rescanning, setRescanning] = useState(false);
+  const [togglingPayment, setTogglingPayment] = useState(false);
+
+  const handleTogglePayment = async () => {
+    setTogglingPayment(true);
+    try {
+      const newStatus = receipt.payment_status === 'paid' ? 'unpaid' : 'paid';
+      await base44.entities.Receipt.update(receipt.id, { payment_status: newStatus });
+      toast.success(newStatus === 'paid' ? 'Marked as Paid' : 'Marked as Unpaid');
+      onUpdate();
+    } catch {
+      toast.error('Failed to update payment status');
+    } finally {
+      setTogglingPayment(false);
+    }
+  };
 
   const handleRescan = async () => {
     if (!receipt.photo_url) return;
@@ -88,12 +103,20 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             Receipt Details
-            <Badge className={`ml-auto ${status.className}`}>
-              <StatusIcon className="w-3 h-3 mr-1" />
-              {status.label}
-            </Badge>
+            <div className="ml-auto flex items-center gap-2">
+              <Badge className={`${status.className}`}>
+                <StatusIcon className="w-3 h-3 mr-1" />
+                {status.label}
+              </Badge>
+              <Badge className={receipt.payment_status === 'paid' ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-700'}>
+                {receipt.payment_status === 'paid'
+                  ? <><Banknote className="w-3 h-3 mr-1" /> Paid</>
+                  : <><AlertCircle className="w-3 h-3 mr-1" /> Unpaid</>
+                }
+              </Badge>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -201,6 +224,26 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
             <p className="text-sm mt-0.5">{receipt.notes}</p>
           </div>
         )}
+
+        {/* Payment status toggle */}
+        <div className="pt-2">
+          <button
+            onClick={handleTogglePayment}
+            disabled={togglingPayment}
+            className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors border ${
+              receipt.payment_status === 'paid'
+                ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
+                : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+            }`}
+          >
+            {togglingPayment
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : receipt.payment_status === 'paid'
+                ? <><Banknote className="w-4 h-4" /> Paid — tap to mark as Unpaid</>
+                : <><AlertCircle className="w-4 h-4" /> Unpaid — tap to mark as Paid</>
+            }
+          </button>
+        </div>
 
         {canApprove && receipt.status !== 'approved' && (
           <div className="flex gap-3 pt-2">

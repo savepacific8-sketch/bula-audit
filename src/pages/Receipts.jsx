@@ -31,7 +31,10 @@ export default function Receipts() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['receipts'] });
 
   const filtered = receipts
-    .filter(r => statusFilter === 'all' || r.status === statusFilter)
+    .filter(r => {
+      if (statusFilter === 'unpaid') return r.payment_status === 'unpaid' || !r.payment_status;
+      return statusFilter === 'all' || r.status === statusFilter;
+    })
     .filter(r => {
       if (!search) return true;
       const s = search.toLowerCase();
@@ -86,8 +89,9 @@ export default function Receipts() {
 
       {/* Status filter tabs */}
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="unpaid" className="text-rose-600">Unpaid</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="approved">Approved</TabsTrigger>
           <TabsTrigger value="rejected">Rejected</TabsTrigger>
