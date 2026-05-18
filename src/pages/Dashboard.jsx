@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
-import ClearTestReceipts from '@/components/dashboard/ClearTestReceipts';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -176,7 +175,7 @@ export default function Dashboard() {
     <div className="space-y-5 pb-8">
 
       {/* Hero */}
-      <DashboardHero company={company} month={month} action={<ClearTestReceipts />} />
+      <DashboardHero company={company} month={month} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
