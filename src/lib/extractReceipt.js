@@ -8,49 +8,76 @@ const CATEGORIES = [
 
 const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_money', 'other'];
 
-// ─── Step 1: Extract raw data from the receipt image ────────────────────────
+// ─── Step 1: Extract + self-validate in one powerful pass ───────────────────
 async function stepExtract(photoUrl) {
-  return base44.integrations.Core.InvokeLLM({
-    model: 'claude_sonnet_4_6',
-    prompt: `You are an expert receipt OCR and accounting data extraction assistant for Fiji MSMEs.
+  const raw = await base44.integrations.Core.InvokeLLM({
+    model: 'claude_opus_4_7',
+    prompt: `You are an elite receipt OCR and accounting data extraction specialist for Fiji MSMEs.
 
-Your job is to read the receipt image very carefully and extract ONLY values that are clearly visible.
+Study the receipt image extremely carefully — zoom into every corner, every number, every label.
 
-STRICT RULES — you MUST follow every one:
-1. NEVER guess, estimate, or infer a number. If you cannot read it clearly, return null.
-2. If a field is blurry, cut off, or ambiguous, return null — do NOT make up a value.
-3. Extract total_amount ONLY if it is clearly printed. If unclear, return null.
-4. Extract vat_amount ONLY if explicitly printed on the receipt. If not shown, return null.
-5. Extract subtotal ONLY if explicitly printed. Do NOT derive it from total − VAT.
-6. Do NOT calculate or derive any monetary value. Extract only what is printed.
-7. Pay close attention to decimal points: 45.00 ≠ 4.50 ≠ 450.00.
-8. Do NOT fill in vat_rate unless it is stated on the receipt. Return null if not shown.
-9. Extract receipt_date exactly as printed, then convert to YYYY-MM-DD. If unreadable, return null.
-10. Fiji currency is FJD unless another currency is clearly shown.
-11. If any financial field is unclear, set its confidence score below 50 and set needs_review to true.
-12. Always return field-level confidence scores (0–100). Be honest — unclear fields should score below 50.
-13. If subtotal + vat_amount does not equal total_amount (within $0.02), set needs_review to true and add "totals_mismatch" to issues.
-14. Never approve the receipt automatically.
+YOUR TASK:
+Extract ALL data you can read from the receipt, then self-verify your work.
 
-For category, pick the best match from: [${CATEGORIES.join(', ')}] or null.
-For payment_method, pick from: [${PAYMENT_METHODS.join(', ')}] or null.
+═══ EXTRACTION RULES ═══
+1. Read every character carefully. Distinguish: 0 vs O, 1 vs l, 5 vs S, 8 vs B.
+2. Numbers: pay extreme attention to decimal points. $45.00 ≠ $4.50 ≠ $450.00.
+3. If a value is clearly printed, extract it. If uncertain or unreadable, use null.
+4. Do NOT derive or calculate monetary values — only extract what is explicitly printed.
+5. For dates: convert to YYYY-MM-DD format. If day/month ambiguous, prefer DD/MM/YYYY (Fiji standard).
+6. Currency defaults to FJD unless another currency is clearly shown.
+7. For vat_rate: Fiji standard is 15% (changed from 9% in 2023). Use 15 unless a different rate is printed.
+8. For vat_type: 
+   - "inclusive" = total already includes VAT (most Fiji receipts)
+   - "exclusive" = VAT added on top of subtotal
+   - "zero_rated" = 0% VAT
+   - "exempt" = VAT exempt
+   - "no_vat" = not VAT registered supplier
+9. Item lines: extract ALL line items. quantity defaults to 1 if not shown.
+10. Supplier TIN: usually labeled "TIN", "VAT No", "Tax No" — 9 digits for Fiji.
 
-Return only valid JSON in this exact structure (no markdown, no commentary):
+═══ SELF-VERIFICATION ═══
+After extracting, verify:
+A. Does subtotal + vat_amount = total_amount? (within $0.02 tolerance)
+B. Do item line totals sum to subtotal (or total if no subtotal)?
+C. Does each item: line_total = quantity × unit_price?
+
+If ANY check fails, explain in issues[] and set needs_review = true.
+
+═══ CONFIDENCE SCORING ═══
+For each field, score your confidence 0–100:
+- 95–100: Perfectly clear, unambiguous
+- 80–94: Clear but minor uncertainty  
+- 60–79: Readable but some doubt
+- 40–59: Hard to read, guessing likely
+- 0–39: Very uncertain, user must verify
+
+Set overall_confidence as the weighted average (financials weighted 2x).
+
+═══ CATEGORIES ═══
+Pick best match: ${CATEGORIES.join(', ')}
+
+═══ PAYMENT METHODS ═══
+Pick best match: ${PAYMENT_METHODS.join(', ')}
+
+═══ OUTPUT FORMAT ═══
+Return ONLY raw JSON (absolutely no markdown, no \`\`\`, no commentary):
 
 {
-  "supplier_name": "",
-  "supplier_tin": "",
-  "receipt_number": "",
-  "receipt_date": "",
-  "subtotal": null,
-  "vat_rate": 12.5,
-  "vat_amount": null,
-  "total_amount": null,
+  "supplier_name": "string or null",
+  "supplier_tin": "string or null",
+  "receipt_number": "string or null",
+  "receipt_date": "YYYY-MM-DD or null",
   "currency": "FJD",
-  "payment_method": "",
-  "category": "",
+  "subtotal": number_or_null,
+  "vat_rate": number_or_null,
+  "vat_type": "inclusive|exclusive|zero_rated|exempt|no_vat",
+  "vat_amount": number_or_null,
+  "total_amount": number_or_null,
+  "payment_method": "string or null",
+  "category": "string or null",
   "item_lines": [
-    { "description": "", "quantity": null, "unit_price": null, "line_total": null }
+    {"description": "string", "quantity": number_or_null, "unit_price": number_or_null, "line_total": number_or_null}
   ],
   "confidence": {
     "supplier_name": 0,
@@ -62,226 +89,164 @@ Return only valid JSON in this exact structure (no markdown, no commentary):
     "total_amount": 0,
     "payment_method": 0
   },
+  "overall_confidence": 0,
   "validation": {
-    "math_matches": false,
-    "subtotal_plus_vat_equals_total": false,
-    "items_add_to_total": false,
-    "needs_review": true,
+    "math_ok": true,
+    "items_sum_ok": true,
+    "needs_review": false,
     "issues": []
   },
   "missing_fields": []
 }`,
     file_urls: [photoUrl],
-    response_json_schema: {
-      type: 'object',
-      properties: {
-        supplier_name:  { type: 'string' },
-        supplier_tin:   { type: 'string' },
-        receipt_number: { type: 'string' },
-        receipt_date:   { type: 'string' },
-        currency:       { type: 'string' },
-        subtotal:       { type: 'number' },
-        vat_rate:       { type: 'number' },
-        vat_amount:     { type: 'number' },
-        total_amount:   { type: 'number' },
-        payment_method: { type: 'string' },
-        category:       { type: 'string' },
-        item_lines: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              description: { type: 'string' },
-              quantity:    { type: 'number' },
-              unit_price:  { type: 'number' },
-              line_total:  { type: 'number' }
-            }
-          }
-        },
-        confidence: {
-          type: 'object',
-          properties: {
-            supplier_name:  { type: 'number' },
-            supplier_tin:   { type: 'number' },
-            receipt_number: { type: 'number' },
-            receipt_date:   { type: 'number' },
-            subtotal:       { type: 'number' },
-            vat_amount:     { type: 'number' },
-            total_amount:   { type: 'number' },
-            payment_method: { type: 'number' },
-          }
-        },
-        validation: {
-          type: 'object',
-          properties: {
-            math_matches:                   { type: 'boolean' },
-            subtotal_plus_vat_equals_total: { type: 'boolean' },
-            items_add_to_total:             { type: 'boolean' },
-            needs_review:                   { type: 'boolean' },
-            issues:                         { type: 'array', items: { type: 'string' } },
-          }
-        },
-        missing_fields: { type: 'array', items: { type: 'string' } },
-      }
-    }
   });
+
+  // Parse the raw string response (no response_json_schema so nulls are preserved)
+  if (typeof raw === 'string') {
+    // Strip any accidental markdown code fences
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    return JSON.parse(cleaned);
+  }
+  return raw;
 }
 
-// ─── Step 2: Validate extracted data against the image ───────────────────────
+// ─── Step 2: Independent verification pass ───────────────────────────────────
 async function stepValidate(photoUrl, extracted) {
   const summary = JSON.stringify({
+    supplier_name:  extracted.supplier_name,
     receipt_number: extracted.receipt_number,
     receipt_date:   extracted.receipt_date,
     subtotal:       extracted.subtotal,
     vat_amount:     extracted.vat_amount,
+    vat_rate:       extracted.vat_rate,
     total_amount:   extracted.total_amount,
     item_lines:     extracted.item_lines,
   }, null, 2);
 
-  return base44.integrations.Core.InvokeLLM({
-    model: 'claude_sonnet_4_6',
-    prompt: `You are a receipt data validation assistant. A first AI pass has already extracted data from a receipt image.
+  const raw = await base44.integrations.Core.InvokeLLM({
+    model: 'claude_opus_4_7',
+    prompt: `You are an independent receipt data auditor. A previous AI pass extracted this data from the receipt image:
 
-Your job is to look at the SAME receipt image and verify whether the extracted values are correct.
-
-Extracted data to verify:
 ${summary}
 
-For each field, look at the receipt image and answer:
-1. Does the total_amount exactly match what is printed?
-2. Does the subtotal exactly match what is printed (if shown)?
-3. Does the vat_amount exactly match what is printed (if shown)?
-4. Does the receipt_number exactly match what is printed?
-5. Does the receipt_date match the date on the receipt?
-6. For each item line, does the line_total equal quantity × unit_price?
-7. Does subtotal + vat_amount ≈ total_amount (within $0.02)?
+Your job: look at the SAME receipt image with fresh eyes and verify each extracted value.
 
-For any field where the extracted value looks WRONG or UNCERTAIN compared to the image, set its confidence to a low value (0–40) and add it to suspect_fields with what you actually see on the receipt.
+For each field:
+1. Look at the image. What do you actually see?
+2. Does it match the extracted value?
+3. If wrong or uncertain, put what YOU see as the corrected value.
 
-Return only valid JSON (no markdown):
+CRITICAL checks:
+- total_amount: Read the TOTAL/GRAND TOTAL line very carefully. Common error: misreading decimal point.
+- subtotal: Check if there's a subtotal line before tax.
+- vat_amount: Look for GST/VAT/Tax line.
+- receipt_date: Verify year, month, day carefully.
+- receipt_number: Check the receipt/invoice number exactly.
+- Math: Does subtotal + vat_amount = total_amount?
+
+Return ONLY raw JSON (no markdown, no \`\`\`):
 
 {
-  "confirmed_fields": {
-    "total_amount":   true,
-    "subtotal":       true,
-    "vat_amount":     true,
-    "receipt_number": true,
-    "receipt_date":   true
-  },
-  "suspect_fields": {
-    "total_amount":   null,
+  "corrections": {
+    "supplier_name":  null,
+    "receipt_number": null,
+    "receipt_date":   null,
     "subtotal":       null,
     "vat_amount":     null,
-    "receipt_number": null,
-    "receipt_date":   null
-  },
-  "item_line_issues": [],
-  "math_check": {
-    "subtotal_plus_vat_equals_total": false,
-    "discrepancy": null
+    "total_amount":   null
   },
   "confidence_overrides": {
-    "total_amount":   null,
+    "supplier_name":  null,
+    "receipt_number": null,
+    "receipt_date":   null,
     "subtotal":       null,
     "vat_amount":     null,
-    "receipt_number": null,
-    "receipt_date":   null
+    "total_amount":   null
   },
+  "math_ok": true,
+  "discrepancy": null,
+  "item_line_issues": [],
   "additional_issues": []
 }
 
 Rules:
-- suspect_fields: if a field looks wrong, put what you actually see in the image as the value. Otherwise null.
-- confidence_overrides: if you disagree with the extraction, set a low number (0–40). Otherwise null.
-- item_line_issues: list any item line index (0-based) where line_total ≠ quantity × unit_price.
-- additional_issues: any other problems you notice (e.g. "total appears to be 45.00 not 4.50").`,
+- corrections[field]: put the CORRECT value if you see a mistake, null if extraction was correct.
+- confidence_overrides[field]: if uncertain or corrected, put a low score (0–40). null = keep original.
+- item_line_issues: list 0-based indices of item lines where line_total ≠ quantity × unit_price.`,
     file_urls: [photoUrl],
-    response_json_schema: {
-      type: 'object',
-      properties: {
-        confirmed_fields: {
-          type: 'object',
-          properties: {
-            total_amount:   { type: 'boolean' },
-            subtotal:       { type: 'boolean' },
-            vat_amount:     { type: 'boolean' },
-            receipt_number: { type: 'boolean' },
-            receipt_date:   { type: 'boolean' },
-          }
-        },
-        suspect_fields: { type: 'object' },
-        item_line_issues: { type: 'array', items: { type: 'number' } },
-        math_check: {
-          type: 'object',
-          properties: {
-            subtotal_plus_vat_equals_total: { type: 'boolean' },
-            discrepancy: { type: 'number' },
-          }
-        },
-        confidence_overrides: { type: 'object' },
-        additional_issues: { type: 'array', items: { type: 'string' } },
-      }
-    }
   });
+
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    return JSON.parse(cleaned);
+  }
+  return raw;
 }
 
-// ─── Merge extraction + validation results ───────────────────────────────────
+// ─── Merge both passes into final result ─────────────────────────────────────
 function mergeResults(extracted, validation) {
   const r = { ...extracted };
   const conf = { ...(r.confidence || {}) };
 
-  // Apply confidence overrides from the validation pass
-  const overrides = validation.confidence_overrides || {};
-  for (const [field, val] of Object.entries(overrides)) {
-    if (val != null) conf[field] = val;
-  }
-
-  // For fields the validator flagged as suspect, lower confidence AND null out the value
-  const suspect = validation.suspect_fields || {};
-  for (const [field, seenValue] of Object.entries(suspect)) {
-    if (seenValue != null) {
-      conf[field] = Math.min(conf[field] ?? 50, 35);
-      // Null out the extracted value so the user must fill it in manually
-      r[field] = null;
+  // Apply corrections from validation pass
+  const corrections = validation.corrections || {};
+  for (const [field, val] of Object.entries(corrections)) {
+    if (val !== null && val !== undefined) {
+      r[field] = val;
+      // If corrected, lower confidence
+      conf[field] = Math.min(conf[field] ?? 50, 45);
     }
   }
 
-  // Accumulate validation issues
-  const issues = [...(r.validation?.issues || [])];
-  if (validation.additional_issues?.length) {
-    issues.push(...validation.additional_issues);
+  // Apply confidence overrides
+  const overrides = validation.confidence_overrides || {};
+  for (const [field, val] of Object.entries(overrides)) {
+    if (val !== null && val !== undefined) {
+      conf[field] = val;
+      // If confidence is low, null out the field so user must review
+      if (val < 40) r[field] = null;
+    }
   }
+
+  // Accumulate all issues
+  const issues = [...(r.validation?.issues || [])];
+  if (validation.additional_issues?.length) issues.push(...validation.additional_issues);
   if (validation.item_line_issues?.length) {
     issues.push(`item_line_mismatch: lines ${validation.item_line_issues.join(', ')}`);
   }
-  if (!validation.math_check?.subtotal_plus_vat_equals_total) {
-    if (!issues.includes('totals_mismatch')) issues.push('totals_mismatch');
+  if (!validation.math_ok && !issues.includes('totals_mismatch')) {
+    issues.push('totals_mismatch');
+    if (validation.discrepancy) issues.push(`discrepancy: $${validation.discrepancy}`);
   }
 
   const needs_review =
     issues.length > 0 ||
-    Object.values(conf).some(v => v < 60);
+    Object.values(conf).some(v => v != null && v < 60) ||
+    r.validation?.needs_review;
 
-  r.confidence  = conf;
-  r.field_confidence     = conf;
-  r.validation_issues    = issues;
-  r.image_quality_issues = [];
-  r.needs_review         = needs_review;
-  r.ai_missing_fields    = r.missing_fields || [];
-  r.ai_confidence = Object.values(conf).length
-    ? Math.round(Object.values(conf).reduce((a, b) => a + b, 0) / Object.values(conf).length)
-    : 50;
+  // Calculate overall confidence
+  const confValues = Object.values(conf).filter(v => v != null && typeof v === 'number');
+  const ai_confidence = r.overall_confidence ?? (
+    confValues.length
+      ? Math.round(confValues.reduce((a, b) => a + b, 0) / confValues.length)
+      : 50
+  );
 
-  // Attach validator's suspect values so the UI can hint at corrections
-  r.suspect_fields = suspect;
-
-  return r;
+  return {
+    ...r,
+    confidence:         conf,
+    field_confidence:   conf,
+    validation_issues:  issues,
+    needs_review,
+    ai_confidence,
+    ai_missing_fields:  r.missing_fields || [],
+    image_quality_issues: [],
+  };
 }
 
 // ─── Public entry point ──────────────────────────────────────────────────────
 export async function extractReceiptData(photoUrl) {
-  // Run both steps — Step 2 can start after Step 1 finishes
-  const extracted = await stepExtract(photoUrl);
+  const extracted  = await stepExtract(photoUrl);
   const validation = await stepValidate(photoUrl, extracted);
   return mergeResults(extracted, validation);
 }
