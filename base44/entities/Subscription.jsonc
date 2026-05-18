@@ -69,7 +69,14 @@
           }
         },
         {
-          "data.company_id": "{{user.data.current_company_id}}"
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": "owner"
+            }
+          ]
         }
       ]
     },
