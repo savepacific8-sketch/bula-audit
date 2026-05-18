@@ -15,7 +15,7 @@ import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/Dashb
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { format, isWithinInterval } from 'date-fns';
+import { format, isWithinInterval, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 const COLORS = [
   'hsl(178,58%,30%)',
@@ -152,6 +152,17 @@ export default function Dashboard() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
+  // Last 6 months expense trend (all approved receipts, not filtered by period)
+  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = subMonths(new Date(), 5 - i);
+    const start = startOfMonth(d);
+    const end = endOfMonth(d);
+    const total = receipts
+      .filter(r => r.status === 'approved' && r.receipt_date && isWithinInterval(new Date(r.receipt_date), { start, end }))
+      .reduce((s, r) => s + (r.total_amount || 0), 0);
+    return { month: format(d, 'MMM'), total };
+  });
+
   const recentReceipts = [...periodReceipts]
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
     .slice(0, 6);
@@ -204,6 +215,31 @@ export default function Dashboard() {
         <StatCard title="Approved"                         value={approvedCount}              icon={CheckCircle2}  accentColor="hsl(150,48%,42%)"  sub="in period" />
         <StatCard title="Rejected"                         value={rejectedCount}              icon={XCircle}       accentColor="hsl(0,72%,51%)"    sub="in period" />
       </div>
+
+      {/* 6-Month Expense Trend */}
+      <SectionCard icon={TrendingUp} title="Monthly Expenses — Last 6 Months">
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={monthlyTrend} margin={{ left: 0, right: 4, top: 4, bottom: 0 }}>
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(210,12%,48%)' }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip
+              formatter={(v) => [formatFJD(v), 'Expenses']}
+              contentStyle={{ fontSize: 12, borderRadius: 10, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+              cursor={{ fill: 'hsl(var(--muted))' }}
+            />
+            <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={40}>
+              {monthlyTrend.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={i === monthlyTrend.length - 1 ? 'hsl(var(--accent))' : 'hsl(178,58%,30%)'}
+                  fillOpacity={i === monthlyTrend.length - 1 ? 1 : 0.65 + (i / monthlyTrend.length) * 0.35}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <p className="text-[10px] text-muted-foreground text-center mt-1">Approved receipts only · Current month highlighted in coral</p>
+      </SectionCard>
 
       {/* Top Categories */}
       <SectionCard icon={ShoppingBag} title="Top 5 Categories">
