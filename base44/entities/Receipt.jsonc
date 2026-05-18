@@ -35,6 +35,11 @@
       "format": "date",
       "description": "Date on the receipt"
     },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date for unpaid invoices"
+    },
     "currency": {
       "type": "string",
       "description": "Currency code (e.g. FJD, USD)"

@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { formatFJD, formatCategory, formatPaymentMethod } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles, RefreshCw, Banknote, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Sparkles, RefreshCw, Banknote, AlertCircle, CalendarClock } from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
@@ -21,6 +23,8 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
   const [updating, setUpdating] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   const [togglingPayment, setTogglingPayment] = useState(false);
+  const [dueDate, setDueDate] = useState('');
+  const [savingDueDate, setSavingDueDate] = useState(false);
 
   const handleTogglePayment = async () => {
     setTogglingPayment(true);
@@ -65,6 +69,20 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
       toast.error('Re-scan failed');
     } finally {
       setRescanning(false);
+    }
+  };
+
+  const handleSaveDueDate = async () => {
+    if (!dueDate) return;
+    setSavingDueDate(true);
+    try {
+      await base44.entities.Receipt.update(receipt.id, { due_date: dueDate });
+      toast.success('Due date saved');
+      onUpdate();
+    } catch {
+      toast.error('Failed to save due date');
+    } finally {
+      setSavingDueDate(false);
     }
   };
 
@@ -185,6 +203,7 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
           <Field label="VAT Amount" value={formatFJD(receipt.vat_amount)} />
           <Field label="Total" value={formatFJD(receipt.total_amount)} />
           <Field label="Category" value={formatCategory(receipt.category)} />
+          <Field label="Due Date" value={receipt.due_date ? format(new Date(receipt.due_date), 'dd MMM yyyy') : null} />
           <Field label="Uploaded By" value={receipt.uploaded_by} />
           {receipt.reviewed_by && <Field label="Reviewed By" value={receipt.reviewed_by} />}
         </div>
@@ -222,6 +241,26 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
           <div>
             <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Notes</p>
             <p className="text-sm mt-0.5">{receipt.notes}</p>
+          </div>
+        )}
+
+        {/* Due date setter (for unpaid) */}
+        {receipt.payment_status !== 'paid' && (
+          <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+            <Label className="text-xs flex items-center gap-1.5 text-muted-foreground">
+              <CalendarClock className="w-3.5 h-3.5" /> Payment Due Date
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                defaultValue={receipt.due_date || ''}
+                onChange={e => setDueDate(e.target.value)}
+                className="flex-1 text-sm"
+              />
+              <Button size="sm" onClick={handleSaveDueDate} disabled={savingDueDate || !dueDate}>
+                {savingDueDate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+              </Button>
+            </div>
           </div>
         )}
 

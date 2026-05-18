@@ -9,6 +9,7 @@ import {
   TrendingUp, ShoppingBag, AlertTriangle, ArrowRight, Users, Waves
 } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
+import UpcomingPayments from '@/components/dashboard/UpcomingPayments';
 import PullToRefresh from '@/components/layout/PullToRefresh';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
 import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/DashboardPeriodFilter';
@@ -343,6 +344,9 @@ export default function Dashboard() {
           </div>
         )}
       </SectionCard>
+
+      {/* Upcoming Payments */}
+      <UpcomingPayments receipts={receipts} />
 
       {/* Monthly Tax Summary */}
       <MonthlyTaxSummary receipts={periodReceipts} />
