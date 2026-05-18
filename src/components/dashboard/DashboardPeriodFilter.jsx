@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, SlidersHorizontal, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -36,6 +36,13 @@ export function buildPeriod(type, customMonth = null, customRange = null) {
   return { type: 'this_month', start: startOfMonth(now), end: endOfMonth(now), label: format(now, 'MMM yyyy') };
 }
 
+const TABS = [
+  { type: 'this_month',   label: 'This Month' },
+  { type: 'last_month',   label: 'Last Month' },
+  { type: 'select_month', label: 'Select Month' },
+  { type: 'custom',       label: 'Custom Range' },
+];
+
 export default function DashboardPeriodFilter({ period, onChange }) {
   const [openPanel, setOpenPanel] = useState(null); // 'month' | 'custom' | null
   const [pickerMonth, setPickerMonth] = useState(
@@ -48,11 +55,15 @@ export default function DashboardPeriodFilter({ period, onChange }) {
     period.type === 'custom' ? format(period.end, 'yyyy-MM-dd') : ''
   );
 
-  const togglePanel = (panel) => setOpenPanel(p => p === panel ? null : panel);
-
-  const handleQuick = (type) => {
-    setOpenPanel(null);
-    onChange(buildPeriod(type));
+  const handleTabClick = (type) => {
+    if (type === 'this_month' || type === 'last_month') {
+      setOpenPanel(null);
+      onChange(buildPeriod(type));
+    } else if (type === 'select_month') {
+      setOpenPanel(p => p === 'month' ? null : 'month');
+    } else if (type === 'custom') {
+      setOpenPanel(p => p === 'custom' ? null : 'custom');
+    }
   };
 
   const applyMonth = () => {
@@ -73,118 +84,52 @@ export default function DashboardPeriodFilter({ period, onChange }) {
   };
   const canGoNext = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1, 1) <= new Date();
 
-  const isMonthActive = period.type === 'select_month' || period.type === 'custom';
-
   return (
     <div className="space-y-2.5">
 
-      {/* ── Control row ── */}
-      <div className="flex items-center gap-2">
+      {/* ── 4-button pill row ── */}
+      <div
+        className="flex items-center rounded-xl overflow-hidden border border-border bg-card shadow-sm"
+        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+      >
+        {TABS.map(({ type, label }, idx) => {
+          const isActive = period.type === type;
+          const isPanelOpen = (type === 'select_month' && openPanel === 'month') ||
+                              (type === 'custom' && openPanel === 'custom');
 
-        {/* Segmented control: This Month / Last Month */}
-        <div
-          className="flex items-center rounded-xl overflow-hidden border border-border bg-card shadow-sm"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-        >
-          {[
-            { type: 'this_month', label: 'This Month' },
-            { type: 'last_month', label: 'Last Month' },
-          ].map(({ type, label }, idx) => {
-            const active = period.type === type;
-            return (
-              <button
-                key={type}
-                onClick={() => handleQuick(type)}
-                className={`
-                  relative px-3.5 py-2 text-[12.5px] font-semibold transition-all duration-200 cursor-pointer
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10
-                  ${idx === 0 ? '' : 'border-l border-border'}
-                  ${active
-                    ? 'text-primary-foreground z-10'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                  }
-                `}
-                style={active ? {
-                  background: 'linear-gradient(135deg, hsl(178,58%,28%) 0%, hsl(178,52%,36%) 100%)',
-                } : {}}
-              >
-                {active && (
-                  <span className="absolute inset-0 opacity-20 pointer-events-none"
-                    style={{ background: 'repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.08) 4px,rgba(255,255,255,.08) 5px)' }}
-                  />
-                )}
-                <span className="relative">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Month picker icon button */}
-        <button
-          onClick={() => togglePanel('month')}
-          title="Select specific month"
-          className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[12.5px] font-semibold
-            transition-all duration-200 cursor-pointer shadow-sm
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-            ${period.type === 'select_month'
-              ? 'text-primary-foreground border-primary/60'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
-            }
-          `}
-          style={period.type === 'select_month' ? {
-            background: 'linear-gradient(135deg, hsl(178,58%,28%) 0%, hsl(178,52%,36%) 100%)',
-          } : {}}
-        >
-          <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden xs:inline sm:inline">
-            {period.type === 'select_month' ? period.label : 'Month'}
-          </span>
-          {period.type === 'select_month' && <Check className="w-3 h-3 shrink-0" />}
-        </button>
-
-        {/* Custom range icon button */}
-        <button
-          onClick={() => togglePanel('custom')}
-          title="Custom date range"
-          className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[12.5px] font-semibold
-            transition-all duration-200 cursor-pointer shadow-sm
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-            ${period.type === 'custom'
-              ? 'text-primary-foreground border-primary/60'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
-            }
-          `}
-          style={period.type === 'custom' ? {
-            background: 'linear-gradient(135deg, hsl(178,58%,28%) 0%, hsl(178,52%,36%) 100%)',
-          } : {}}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden sm:inline">
-            {period.type === 'custom' ? period.label : 'Custom'}
-          </span>
-          {period.type === 'custom' && <Check className="w-3 h-3 shrink-0" />}
-        </button>
-
+          return (
+            <button
+              key={type}
+              onClick={() => handleTabClick(type)}
+              className={`
+                relative flex-1 px-2 py-2 text-[12px] font-semibold transition-all duration-200 cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10
+                ${idx > 0 ? 'border-l border-border' : ''}
+                ${isActive || isPanelOpen
+                  ? 'text-primary-foreground z-10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }
+              `}
+              style={isActive || isPanelOpen ? {
+                background: 'linear-gradient(135deg, hsl(178,58%,28%) 0%, hsl(178,52%,36%) 100%)',
+              } : {}}
+            >
+              {isActive && (
+                <span
+                  className="absolute inset-0 opacity-20 pointer-events-none"
+                  style={{ background: 'repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.08) 4px,rgba(255,255,255,.08) 5px)' }}
+                />
+              )}
+              <span className="relative leading-tight block">
+                {/* Show selected label for select_month and custom when active */}
+                {isActive && type === 'select_month' ? period.label
+                  : isActive && type === 'custom' ? period.label
+                  : label}
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      {/* ── Active period pill (when not a quick preset) ── */}
-      {isMonthActive && (
-        <div className="flex items-center gap-1.5">
-          <div
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold"
-            style={{
-              background: 'hsl(178,58%,30%,0.1)',
-              color: 'hsl(178,58%,28%)',
-              border: '1px solid hsl(178,58%,30%,0.25)',
-            }}
-          >
-            <CalendarDays className="w-3 h-3" />
-            {period.label}
-          </div>
-        </div>
-      )}
 
       {/* ── Month picker panel ── */}
       <AnimatePresence>
@@ -214,11 +159,9 @@ export default function DashboardPeriodFilter({ period, onChange }) {
               >
                 <ChevronLeft className="w-4 h-4 text-foreground" />
               </button>
-
               <span className="text-[14px] font-bold text-foreground">
                 {format(pickerMonth, 'MMMM yyyy')}
               </span>
-
               <button
                 onClick={nextMonth}
                 disabled={!canGoNext}
