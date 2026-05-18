@@ -72,16 +72,8 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "data.company_id": "{{user.data.current_company_id}}"
-        }
-      ]
+      "data.company_id": "{{user.data.current_company_id}}",
+      "user.data.current_company_role": "owner"
     },
     "read": {
       "$or": [
@@ -91,19 +83,73 @@
           }
         },
         {
-          "data.company_id": "{{user.data.current_company_id}}"
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager",
+                  "accountant"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "data.submitted_by": "{{user.email}}"
         }
       ]
     },
     "update": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": "owner"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.submitted_by": "{{user.email}}"
+            },
+            {
+              "data.status": "pending"
+            }
+          ]
+        }
+      ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": "owner"
+            }
+          ]
+        }
+      ]
     }
   }
 }
