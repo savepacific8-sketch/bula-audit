@@ -34,15 +34,17 @@ export function validateVatMath({ total_amount, vat_amount, vat_rate, subtotal, 
     return { ok: false, issues: ['missing_financial_fields'], net_subtotal: null };
   }
 
-  // Fiji VAT rate validation
-  const expectedRate = getFijiExpectedVatRate(receipt_date);
-  if (expectedRate !== null && Math.abs(rate - expectedRate) > 0.01) {
-    if (expectedRate === 12.5 && Math.abs(rate - 15) < 0.01) {
-      issues.push('vat_rate_15pct_valid_for_aug2023_jul2025_only');
-    } else if (expectedRate === 15 && Math.abs(rate - 12.5) < 0.01) {
-      issues.push('vat_rate_12_5pct_valid_from_aug2025_only');
-    } else {
-      issues.push(`vat_rate_${rate}pct_unexpected_for_date`);
+  // Fiji VAT rate validation — skip check for zero-rated
+  if (rate > 0) {
+    const expectedRate = getFijiExpectedVatRate(receipt_date);
+    if (expectedRate !== null && Math.abs(rate - expectedRate) > 0.01) {
+      if (expectedRate === 12.5 && Math.abs(rate - 15) < 0.01) {
+        issues.push('vat_rate_should_be_12_5pct_from_aug2025');
+      } else if (expectedRate === 15 && Math.abs(rate - 12.5) < 0.01) {
+        issues.push('vat_rate_should_be_15pct_for_aug2023_jul2025');
+      } else if (expectedRate === 9 && Math.abs(rate - 9) > 0.01) {
+        issues.push(`vat_rate_${rate}pct_unexpected_pre_aug2023`);
+      }
     }
   }
 
@@ -89,31 +91,37 @@ async function stepExtract(photoUrl) {
 Study the receipt image extremely carefully — zoom into every corner, every number, every label.
 
 ═══ FIJI VAT RULES (CRITICAL) ═══
-Fiji VAT rate history — you MUST use this to validate:
+Fiji VAT rate history:
 - Before 1 Aug 2023:        9% VAT
-- 1 Aug 2023 – 31 Jul 2025: 15% VAT  (label on receipt: "D")
-- From 1 Aug 2025 onward:   12.5% VAT (label on receipt: "G")
-- Zero-rated supplies:      0% VAT
+- 1 Aug 2023 – 31 Jul 2025: 15% VAT  (FRCS label on receipt: "D")
+- 1 Aug 2025 onward:        12.5% VAT (FRCS label on receipt: "G") ← CURRENT RATE
+- Zero-rated supplies:      0% VAT (FRCS label: "E")
 
-IMPORTANT: 12.5% is the CURRENT standard Fiji VAT rate (from Aug 2025). Do NOT flag it as non-standard.
-Only flag 12.5% if the receipt date is clearly before 1 August 2025.
-Only flag 15% if the receipt date is clearly on or after 1 August 2025.
+CRITICAL RULES ON VAT RATE:
+• 12.5% is the CURRENT standard Fiji VAT rate for receipts dated 1 Aug 2025 or later. It is VALID. Do NOT call it non-standard, unusual, or incorrect.
+• 15% is valid ONLY for receipts dated 1 Aug 2023 – 31 Jul 2025. Flag it if the receipt date is on or after 1 Aug 2025.
+• 0% is always valid for zero-rated items regardless of date.
 
-═══ VAT MATH FOR INCLUSIVE RECEIPTS ═══
-Most Fiji receipts show VAT-inclusive totals.
-If total = $34.20 and VAT = $3.80 and rate = 12.5%:
+═══ VAT MATH — READ CAREFULLY ═══
+Most Fiji receipts are VAT-INCLUSIVE (VAT is embedded inside the total).
+
+INCLUSIVE example: total=$34.20, vat=$3.80, rate=12.5%
   net_subtotal = total - vat = $34.20 - $3.80 = $30.40  ✓
-  check: $30.40 × 12.5% = $3.80  ✓
-  check: $30.40 + $3.80 = $34.20  ✓  → VALID, math passes
+  verify: $30.40 × 12.5% = $3.80  ✓  → math is CORRECT, do not flag
 
-For VAT-inclusive: net_subtotal = total_amount - vat_amount
-For VAT-exclusive: net_subtotal = subtotal, total = subtotal + vat
+EXCLUSIVE example: subtotal=$30.40, vat=$3.80, total=$34.20
+  net_subtotal = subtotal = $30.40
+  verify: $30.40 + $3.80 = $34.20  ✓  → math is CORRECT
 
-IMPORTANT SUBTOTAL FIELD:
-- "printed_subtotal" = whatever subtotal line is printed on the receipt (may be gross/inclusive)
-- "net_subtotal" = the true pre-VAT net amount (calculated or printed)
-- If the receipt shows a "subtotal" line that equals the total (before a separate VAT line), that subtotal IS the gross subtotal. The net = gross_subtotal - vat.
-- Only mark math as failing if the numbers genuinely don't reconcile within $0.02.
+ALWAYS extract and return these four fields:
+  - printed_subtotal: the subtotal line as literally printed on the receipt (may equal total if VAT is shown separately below it)
+  - net_subtotal: the true pre-VAT amount (= total - vat for inclusive; = printed_subtotal for exclusive)
+  - vat_amount: the VAT amount shown or calculated
+  - total_amount: the final amount paid (grand total / amount due)
+
+IMPORTANT: If the receipt prints a "subtotal" that equals the total (i.e., the subtotal line appears above a separate VAT line), that printed subtotal is the GROSS amount. The real net_subtotal = printed_subtotal - vat_amount.
+
+Only set math_ok=false if numbers genuinely fail to reconcile within $0.02.
 
 ═══ EXTRACTION RULES ═══
 1. Read every character carefully. Distinguish: 0 vs O, 1 vs l, 5 vs S, 8 vs B.
@@ -122,19 +130,21 @@ IMPORTANT SUBTOTAL FIELD:
 4. Do NOT flag valid numbers as suspicious just because they look unusual.
 5. For dates: convert to YYYY-MM-DD format. Fiji standard is DD/MM/YYYY.
 6. Currency defaults to FJD unless another currency is clearly shown.
-7. For vat_type: 
-   - "inclusive" = total already includes VAT (most Fiji receipts — the VAT is embedded in the total)
-   - "exclusive" = VAT is added ON TOP of the subtotal to get the total
-   - "zero_rated" = 0% VAT applies
-   - "exempt" = VAT exempt
-   - "no_vat" = not VAT registered supplier
+7. For vat_type — choose the most accurate:
+   - "inclusive"  = VAT is embedded inside the total (most common in Fiji)
+   - "exclusive"  = VAT is added on top of the subtotal to reach the total
+   - "zero_rated" = 0% VAT (FRCS label "E") — supply is taxable but at 0%
+   - "exempt"     = supply is exempt from VAT entirely
+   - "no_vat"     = supplier is not VAT-registered
+   If genuinely unclear, use "inclusive" as the safe default for Fiji.
 8. Item lines: extract ALL line items. quantity defaults to 1 if not shown.
 9. Supplier TIN: usually labeled "TIN", "VAT No", "Tax No" — 9 digits for Fiji.
 
 ═══ SELF-VERIFICATION ═══
 After extracting, verify the math using the rules above.
-ONLY flag issues if numbers genuinely don't reconcile (>$0.02 difference).
-A valid inclusive receipt with total=$34.20, vat=$3.80, net=$30.40, rate=12.5% is CORRECT — do not flag it.
+ONLY set validation.math_ok=false if numbers genuinely fail to reconcile (>$0.02 difference).
+A valid inclusive receipt with total=$34.20, vat=$3.80, net=$30.40, rate=12.5% → math_ok=true.
+Do NOT add any issue for 12.5% VAT on receipts dated 1 Aug 2025 or later — it is correct.
 
 ═══ CONFIDENCE SCORING ═══
 For each field, score 0–100:
@@ -225,11 +235,17 @@ ${summary}
 Your job: verify each value independently by re-reading the receipt image.
 
 ═══ FIJI VAT RULES — APPLY THESE ═══
-- From 1 Aug 2025 onward: 12.5% VAT is correct. Do NOT flag it as wrong.
-- Aug 2023–Jul 2025: 15% VAT was correct.
-- For VAT-inclusive receipts: net_subtotal = total_amount - vat_amount
-  Example: total=$34.20, vat=$3.80 → net=$30.40. This is CORRECT math — do not flag it.
-- Only flag math_ok=false if the numbers genuinely don't add up within $0.02.
+Rate validity by receipt date:
+  • 1 Aug 2025 onward:        12.5% → VALID. Do NOT flag as wrong, non-standard, or unusual.
+  • 1 Aug 2023 – 31 Jul 2025: 15%   → valid for that period only.
+  • Before 1 Aug 2023:        9%    → valid for that period only.
+  • Any date:                 0%    → valid for zero-rated items.
+
+VAT math:
+  • Inclusive: net_subtotal = total_amount − vat_amount. Example: $34.20 − $3.80 = $30.40. math_ok=true.
+  • Exclusive: total_amount = net_subtotal + vat_amount.
+  • Only set math_ok=false if numbers fail to reconcile within $0.02.
+  • If the printed subtotal equals total_amount (with VAT shown separately), net_subtotal = printed_subtotal − vat_amount.
 
 ═══ VERIFICATION CHECKS ═══
 1. total_amount: Read the TOTAL / GRAND TOTAL / AMOUNT DUE line. Beware decimal errors.
@@ -265,9 +281,10 @@ Return ONLY raw JSON (no markdown, no \`\`\`):
 }
 
 Rules:
-- corrections[field]: correct value if wrong, null if correct.
+- corrections[field]: corrected value if the extracted value is wrong, null if correct.
 - confidence_overrides[field]: low score (0–40) only if genuinely uncertain or corrected. null = keep original.
-- Do NOT add issues for 12.5% VAT on recent receipts — it is the current Fiji standard.`,
+- Do NOT add issues for 12.5% VAT on receipts dated 1 Aug 2025 or later — it is the current Fiji standard.
+- Do NOT add issues for 0% VAT on zero-rated items.`,
     file_urls: [photoUrl],
   });
 
