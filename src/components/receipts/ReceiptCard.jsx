@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatFJD, formatCategory } from '@/lib/formatCurrency';
 import { format } from 'date-fns';
-import { Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Paperclip } from 'lucide-react';
 
 const statusConfig = {
   pending: { label: 'Pending', icon: Clock, className: 'bg-amber-100 text-amber-700 border-amber-200' },
@@ -42,6 +42,11 @@ export default function ReceiptCard({ receipt, onClick }) {
             </Badge>
             {receipt.category && (
               <span className="text-[10px] text-muted-foreground">{formatCategory(receipt.category)}</span>
+            )}
+            {receipt.document_url && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-primary/70">
+                <Paperclip className="w-2.5 h-2.5" /> doc
+              </span>
             )}
           </div>
         </div>

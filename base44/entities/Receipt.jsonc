@@ -8,7 +8,15 @@
     },
     "photo_url": {
       "type": "string",
-      "description": "URL of the uploaded receipt photo"
+      "description": "URL of the uploaded receipt photo or document"
+    },
+    "document_url": {
+      "type": "string",
+      "description": "URL of an attached digital document (PDF or image from email)"
+    },
+    "document_name": {
+      "type": "string",
+      "description": "Original filename of the attached document"
     },
     "supplier_name": {
       "type": "string",

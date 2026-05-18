@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Camera, ImagePlus, Loader2, Upload, ArrowLeft,
   CheckCircle2, RotateCcw, Sparkles, AlertTriangle, RefreshCw, Info,
-  Sun, Eye, Crop, Wind
+  Sun, Eye, Crop, Wind, FileText, Paperclip
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
@@ -45,6 +45,7 @@ export default function UploadReceipt() {
   const { company } = useCompany();
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const [step, setStep] = useState('capture');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -53,6 +54,9 @@ export default function UploadReceipt() {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM, vat_rate: company?.vat_rate || 12.5 });
+  const [documentUrl, setDocumentUrl] = useState('');
+  const [documentName, setDocumentName] = useState('');
+  const [documentUploading, setDocumentUploading] = useState(false);
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -206,6 +210,8 @@ export default function UploadReceipt() {
         ai_missing_fields:    form.ai_missing_fields?.length ? form.ai_missing_fields : undefined,
         status:               'pending',
         uploaded_by:          user.email,
+        document_url:         documentUrl || undefined,
+        document_name:        documentName || undefined,
       });
       setStep('done');
     } catch {
@@ -215,10 +221,29 @@ export default function UploadReceipt() {
     }
   };
 
+  const handleDocumentFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocumentName(file.name);
+    setDocumentUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setDocumentUrl(file_url);
+      toast.success('Document attached!');
+    } catch {
+      toast.error('Failed to upload document. Please try again.');
+      setDocumentName('');
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
+
   const reset = () => {
     setStep('capture');
     setPhotoUrl('');
     setPreviewSrc('');
+    setDocumentUrl('');
+    setDocumentName('');
     setForm({ ...EMPTY_FORM, vat_rate: company?.vat_rate || 12.5 });
   };
 
@@ -267,8 +292,39 @@ export default function UploadReceipt() {
             <div className="flex items-center justify-center gap-3 bg-secondary text-secondary-foreground rounded-2xl px-6 py-5 text-base font-semibold hover:bg-secondary/80 transition-colors border border-border">
               <ImagePlus className="w-6 h-6" /> Choose from Gallery
             </div>
-            <input ref={galleryInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFile} />
+            <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
           </label>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-1">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or attach a digital receipt</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <label className="w-full cursor-pointer">
+            <div className={`flex items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-semibold transition-colors border-2 border-dashed ${
+              documentName
+                ? 'border-primary/40 bg-primary/5 text-primary'
+                : 'border-border bg-transparent text-muted-foreground hover:border-primary/40 hover:text-foreground'
+            }`}>
+              {documentUploading
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> Uploading document...</>
+                : documentName
+                  ? <><FileText className="w-5 h-5" /> <span className="truncate max-w-[200px]">{documentName}</span></>
+                  : <><Paperclip className="w-5 h-5" /> Attach PDF or Invoice</>
+              }
+            </div>
+            <input ref={documentInputRef} type="file" accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleDocumentFile} />
+          </label>
+          {documentName && (
+            <button
+              onClick={() => { setDocumentUrl(''); setDocumentName(''); }}
+              className="text-xs text-muted-foreground hover:text-destructive text-center w-full"
+            >
+              Remove attachment
+            </button>
+          )}
         </div>
       </div>
     );
@@ -350,6 +406,18 @@ export default function UploadReceipt() {
       {previewSrc && (
         <div className="rounded-xl overflow-hidden border border-border h-28 bg-muted">
           <img src={previewSrc} alt="Receipt" className="w-full h-full object-contain" />
+        </div>
+      )}
+
+      {/* Attached document indicator */}
+      {documentName && (
+        <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
+          <FileText className="w-4 h-4 shrink-0" />
+          <span className="truncate flex-1">{documentName}</span>
+          {documentUploading
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            : <span className="text-xs text-muted-foreground shrink-0">attached</span>
+          }
         </div>
       )}
 
