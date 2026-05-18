@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import PullToRefresh from '@/components/layout/PullToRefresh';
 
 export default function Receipts() {
   const { company, canUpload } = useCompany();
@@ -39,7 +40,12 @@ export default function Receipts() {
     })
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['receipts', company?.id] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-4">
       <PageHeader
         title="Receipts"
@@ -99,5 +105,6 @@ export default function Receipts() {
 
       <UploadReceiptModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={refresh} />
     </div>
+    </PullToRefresh>
   );
 }

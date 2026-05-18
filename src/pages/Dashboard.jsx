@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
@@ -9,6 +9,7 @@ import {
   TrendingUp, ShoppingBag, AlertTriangle, ArrowRight, Users, Waves
 } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
+import PullToRefresh from '@/components/layout/PullToRefresh';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
 import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/DashboardPeriodFilter';
 import { Badge } from '@/components/ui/badge';
@@ -105,6 +106,7 @@ function DashboardHero({ company, month, action }) {
 export default function Dashboard() {
   const { company } = useCompany();
   const [period, setPeriod] = useState(() => buildPeriod('this_month'));
+  const queryClient = useQueryClient();
 
   const { data: receipts = [], isLoading } = useQuery({
     queryKey: ['receipts', company?.id],
@@ -180,7 +182,12 @@ export default function Dashboard() {
     );
   }
 
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['receipts', company?.id] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-5 pb-8">
 
       {/* Hero */}
@@ -343,5 +350,6 @@ export default function Dashboard() {
       )}
 
     </div>
+    </PullToRefresh>
   );
 }

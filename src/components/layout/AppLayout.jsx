@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import BulaLogo from '@/components/layout/BulaLogo';
+import BottomTabBar from '@/components/layout/BottomTabBar';
+import MobileHeader from '@/components/layout/MobileHeader';
 
 const navItems = [
   { path: '/',            label: 'Dashboard', icon: LayoutDashboard },
@@ -13,6 +16,8 @@ const navItems = [
   { path: '/team',        label: 'Team',      icon: Users },
   { path: '/company',     label: 'Company',   icon: Building2 },
 ];
+
+const ROOT_PATHS = ['/', '/receipts', '/reports', '/company', '/tax-reports', '/team'];
 
 function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
   const location = useLocation();
@@ -47,7 +52,8 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
               key={item.path}
               to={item.path}
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ${
                 isActive
                   ? 'bg-white/15 text-white border border-white/10 shadow-sm'
                   : 'text-white/55 hover:bg-white/8 hover:text-white/85'
@@ -66,8 +72,8 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
           <Link
             to="/upload"
             onClick={onNavigate}
+            style={{ userSelect: 'none', WebkitUserSelect: 'none', background: 'hsl(var(--accent))' }}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white transition-all mt-4 shadow-md"
-            style={{ background: 'hsl(var(--accent))' }}
           >
             <Upload className="w-4 h-4 shrink-0" />
             Upload Receipt
@@ -78,6 +84,7 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
       <div className="px-3 pb-6 border-t border-white/10 pt-3">
         <button
           onClick={handleLogout}
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/45 hover:bg-white/8 hover:text-white/80 w-full transition-all"
         >
           <LogOut className="w-4 h-4" />
@@ -88,10 +95,17 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
   );
 }
 
+const pageVariants = {
+  initial: { opacity: 0, x: 18 },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] } },
+  exit:    { opacity: 0, x: -10, transition: { duration: 0.15, ease: 'easeIn' } },
+};
+
 export default function AppLayout() {
   const location = useLocation();
   const { company, userRole, canUpload } = useCompany();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const isRoot = ROOT_PATHS.includes(location.pathname);
 
   const filteredNav = navItems.filter(item => {
     if (item.path === '/team' && userRole !== 'owner' && userRole !== 'manager') return false;
@@ -100,74 +114,82 @@ export default function AppLayout() {
   });
 
   return (
-    <div className="bg-background flex" style={{ minHeight: '100svh' }}>
-
+    <div
+      className="bg-background flex"
+      style={{
+        minHeight: '100svh',
+        overscrollBehavior: 'none',
+        WebkitOverscrollBehavior: 'none',
+      }}
+    >
       {/* ── Desktop Sidebar ─────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-64 fixed h-full z-30">
         <Sidebar filteredNav={filteredNav} company={company} canUpload={canUpload} onNavigate={() => {}} />
       </aside>
 
-      {/* ── Mobile: Sidebar Drawer ──────────────────────────────── */}
-      {/* Backdrop */}
-      {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-40 bg-black/50"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Drawer */}
-      <aside
-        className="md:hidden fixed top-0 left-0 h-full z-50 w-72 transition-transform duration-300"
-        style={{ transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)' }}
-      >
-        {/* Close button */}
-        <button
-          onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 z-10 text-white/60 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        <Sidebar filteredNav={filteredNav} company={company} canUpload={canUpload} onNavigate={() => setMobileOpen(false)} />
-      </aside>
-
-      {/* ── Mobile Top Header (hamburger) ──────────────────────── */}
-      <div
-        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 masi-pattern wave-pattern"
-        style={{
-          background: 'hsl(var(--fiji-deep))',
-          paddingTop: 'max(14px, env(safe-area-inset-top, 14px))',
-          paddingBottom: '10px',
-        }}
-      >
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="text-white/80 hover:text-white p-1 -ml-1"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-2">
-          <BulaLogo size={24} />
-          <span className="text-white font-poppins font-bold text-base tracking-wide">BULA AUDIT</span>
-        </div>
-        {company && (
-          <span className="text-white/55 text-[11px] truncate max-w-[100px] font-medium">{company.name}</span>
+      {/* ── Mobile Drawer (for non-tab items) ───────────────────── */}
+      <AnimatePresence>
+        {mobileDrawerOpen && (
+          <>
+            <motion.div
+              key="backdrop"
+              className="md:hidden fixed inset-0 z-40 bg-black/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileDrawerOpen(false)}
+            />
+            <motion.aside
+              key="drawer"
+              className="md:hidden fixed top-0 left-0 h-full z-50 w-72"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="absolute top-4 right-4 z-10 text-white/60 hover:text-white"
+                style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <Sidebar filteredNav={filteredNav} company={company} canUpload={canUpload} onNavigate={() => setMobileDrawerOpen(false)} />
+            </motion.aside>
+          </>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* ── Mobile Top Header ───────────────────────────────────── */}
+      <MobileHeader company={company} />
 
       {/* ── Main Content ─────────────────────────────────────────── */}
       <main
         className="flex-1 md:ml-64 overflow-y-auto"
         style={{
           paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))',
-          paddingBottom: '24px',
+          paddingBottom: isRoot ? 'calc(64px + env(safe-area-inset-bottom, 0px))' : '24px',
           minHeight: '100svh',
+          overscrollBehavior: 'none',
         }}
       >
         <div className="p-4 md:p-8 md:pt-6 max-w-6xl mx-auto">
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
+
+      {/* ── Bottom Tab Bar (mobile only) ─────────────────────────── */}
+      <BottomTabBar />
     </div>
   );
 }

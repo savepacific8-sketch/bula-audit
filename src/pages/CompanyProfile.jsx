@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Save, Loader2, Building2 } from 'lucide-react';
+import { Save, Loader2, Building2, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/layout/PageHeader';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function CompanyProfile() {
   const { company, setCompany, userRole } = useCompany();
@@ -17,6 +21,9 @@ export default function CompanyProfile() {
     vat_registered: false, vat_rate: 12.5
   });
   const [saving, setSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (company) {
@@ -60,6 +67,19 @@ export default function CompanyProfile() {
   };
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await base44.auth.updateMe({ current_company_id: null, current_company_role: null });
+      await base44.entities.Company.delete(company.id);
+      toast.success('Company deleted');
+      base44.auth.logout('/');
+    } catch (err) {
+      toast.error('Failed to delete. Please contact support.');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -126,6 +146,58 @@ export default function CompanyProfile() {
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       )}
+
+      {/* Delete Account */}
+      {canEdit && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-destructive flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Permanently delete this company and all its data — receipts, reports, and team members. <strong>This cannot be undone.</strong>
+            </p>
+            <Button
+              variant="destructive"
+              className="gap-2"
+              onClick={() => { setDeleteConfirm(''); setShowDeleteDialog(true); }}
+            >
+              <Trash2 className="w-4 h-4" /> Delete Company &amp; All Data
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Company?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">This will permanently delete <strong>{company?.name}</strong> and all associated receipts, reports, and team members.</span>
+              <span className="block mt-2">Type <strong>DELETE</strong> to confirm:</span>
+              <Input
+                value={deleteConfirm}
+                onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE"
+                className="mt-1"
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteConfirm !== 'DELETE' || deleting}
+              onClick={handleDeleteAccount}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {deleting ? 'Deleting...' : 'Delete Forever'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
