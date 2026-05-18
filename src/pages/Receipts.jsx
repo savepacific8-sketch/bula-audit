@@ -5,11 +5,12 @@ import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import ReceiptCard from '@/components/receipts/ReceiptCard';
 import UploadReceiptModal from '@/components/receipts/UploadReceiptModal';
+import BulkUploadModal from '@/components/receipts/BulkUploadModal';
 import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, CloudUpload } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import PullToRefresh from '@/components/layout/PullToRefresh';
@@ -19,6 +20,7 @@ export default function Receipts() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showUpload, setShowUpload] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -57,13 +59,22 @@ export default function Receipts() {
         title="Receipts"
         subtitle="All your business expense receipts"
         action={canUpload && (
-          <Button
-            onClick={() => setShowUpload(true)}
-            className="gap-2 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow"
-            style={{ background: 'hsl(var(--accent))' }}
-          >
-            <Plus className="w-4 h-4" /> Upload Receipt
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowBulk(true)}
+              variant="outline"
+              className="gap-2 text-sm font-semibold px-3 py-2 rounded-xl"
+            >
+              <CloudUpload className="w-4 h-4" /> Bulk
+            </Button>
+            <Button
+              onClick={() => setShowUpload(true)}
+              className="gap-2 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow"
+              style={{ background: 'hsl(var(--accent))' }}
+            >
+              <Plus className="w-4 h-4" /> Upload
+            </Button>
+          </div>
         )}
       />
 
@@ -132,6 +143,7 @@ export default function Receipts() {
       )}
 
       <UploadReceiptModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={refresh} />
+      <BulkUploadModal open={showBulk} onClose={() => setShowBulk(false)} onSuccess={refresh} />
     </div>
     </PullToRefresh>
   );
