@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSubscription } from '@/hooks/useSubscription';
+import UsageMeter from '@/components/billing/UsageMeter';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
@@ -19,6 +21,7 @@ export default function Receipts() {
   const { company, canUpload } = useCompany();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { uploadAllowed, monthlyUsage, receiptLimit } = useSubscription();
   const [showUpload, setShowUpload] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -58,7 +61,7 @@ export default function Receipts() {
       <PageHeader
         title="Receipts"
         subtitle="All your business expense receipts"
-        action={canUpload && (
+        action={canUpload && uploadAllowed && (
           <div className="flex gap-2">
             <Button
               onClick={() => setShowBulk(true)}
@@ -142,7 +145,10 @@ export default function Receipts() {
         </div>
       )}
 
-      <UploadReceiptModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={refresh} />
+      <div className="pt-1">
+        <UsageMeter used={monthlyUsage} limit={receiptLimit} />
+      </div>
+      <UploadReceiptModal open={showUpload && uploadAllowed} onClose={() => setShowUpload(false)} onSuccess={refresh} />
       <BulkUploadModal open={showBulk} onClose={() => setShowBulk(false)} onSuccess={refresh} />
     </div>
     </PullToRefresh>

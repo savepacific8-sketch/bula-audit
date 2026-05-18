@@ -1,16 +1,24 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileText, Building2 } from 'lucide-react';
+import { LayoutDashboard, Receipt, FileText, Building2, CreditCard } from 'lucide-react';
+import { useCompany } from '@/lib/useCompanyContext.jsx';
 
-const tabs = [
+const ALL_TABS = [
   { path: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { path: '/receipts', label: 'Receipts',  icon: Receipt },
   { path: '/reports',  label: 'Reports',   icon: FileText },
+  { path: '/billing',  label: 'Billing',   icon: CreditCard, ownerOnly: true },
   { path: '/company',  label: 'Company',   icon: Building2 },
 ];
 
 export default function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { userRole } = useCompany();
+
+  const tabs = ALL_TABS.filter(t => {
+    if (t.ownerOnly && userRole !== 'owner' && userRole !== 'accountant') return false;
+    return true;
+  });
 
   const rootPaths = tabs.map(t => t.path);
   const isRootRoute = rootPaths.includes(location.pathname);

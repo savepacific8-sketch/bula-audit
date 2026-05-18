@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, X } from 'lucide-react';
+import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, X, CreditCard, ShieldCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import BulaLogo from '@/components/layout/BulaLogo';
@@ -15,9 +15,11 @@ const navItems = [
   { path: '/tax-reports', label: 'VAT',       icon: Shield, restricted: true },
   { path: '/team',        label: 'Team',      icon: Users },
   { path: '/company',     label: 'Company',   icon: Building2 },
+  { path: '/billing',     label: 'Billing',   icon: CreditCard, ownerOnly: true },
+  { path: '/admin-billing', label: 'Admin Billing', icon: ShieldCheck, adminOnly: true },
 ];
 
-const ROOT_PATHS = ['/', '/receipts', '/reports', '/company', '/tax-reports', '/team'];
+const ROOT_PATHS = ['/', '/receipts', '/reports', '/company', '/tax-reports', '/team', '/billing', '/admin-billing'];
 
 function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
   const location = useLocation();
@@ -104,12 +106,17 @@ const pageVariants = {
 export default function AppLayout() {
   const location = useLocation();
   const { company, userRole, canUpload } = useCompany();
+  const [appUserRole, setAppUserRole] = useState(null);
+  // Load base44 app-level role for admin-only nav items
+  useState(() => { base44.auth.me().then(u => setAppUserRole(u?.role)).catch(() => {}); });
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const isRoot = ROOT_PATHS.includes(location.pathname);
 
   const filteredNav = navItems.filter(item => {
     if (item.path === '/team' && userRole !== 'owner' && userRole !== 'manager') return false;
     if (item.restricted && userRole !== 'owner' && userRole !== 'manager' && userRole !== 'accountant') return false;
+    if (item.ownerOnly && userRole !== 'owner' && userRole !== 'accountant') return false;
+    if (item.adminOnly && appUserRole !== 'admin') return false;
     return true;
   });
 

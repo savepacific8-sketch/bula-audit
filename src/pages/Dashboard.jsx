@@ -16,6 +16,8 @@ import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
 import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/DashboardPeriodFilter';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSubscription } from '@/hooks/useSubscription';
+import UsageMeter from '@/components/billing/UsageMeter';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format, isWithinInterval, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -106,7 +108,8 @@ function DashboardHero({ company, month, action }) {
 
 /* ── Main Component ─────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { company } = useCompany();
+  const { company, userRole } = useCompany();
+  const { subscription, monthlyUsage, receiptLimit, limitReached, isExpired } = useSubscription();
   const [period, setPeriod] = useState(() => buildPeriod('this_month'));
   const queryClient = useQueryClient();
 
@@ -205,6 +208,24 @@ export default function Dashboard() {
 
       {/* Hero */}
       <DashboardHero company={company} month={month} />
+
+      {/* Subscription alerts */}
+      {(isExpired || subscription?.status === 'suspended') && (
+        <Link to="/billing" className="block rounded-2xl border border-rose-200 bg-rose-50 p-3 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span className="text-sm text-rose-800 font-medium flex-1">
+            {subscription?.status === 'suspended' ? 'Account suspended' : 'Subscription expired'} — tap to renew
+          </span>
+          <ArrowRight className="w-4 h-4 text-rose-500 shrink-0" />
+        </Link>
+      )}
+      {limitReached && !isExpired && (
+        <Link to="/billing" className="block rounded-2xl border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="text-sm text-amber-800 font-medium flex-1">Monthly receipt limit reached — upgrade to continue</span>
+          <ArrowRight className="w-4 h-4 text-amber-500 shrink-0" />
+        </Link>
+      )}
 
       {/* Due Soon Alert */}
       <DueSoonAlert receipts={receipts} />

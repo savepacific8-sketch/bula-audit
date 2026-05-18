@@ -75,6 +75,17 @@ export default function Onboarding({ onComplete }) {
         role: 'owner',
         status: 'active',
       });
+      // Create a 14-day free trial subscription
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+      await base44.entities.Subscription.create({
+        company_id: company.id,
+        plan: 'free_trial',
+        billing_cycle: 'monthly',
+        status: 'trial',
+        start_date: new Date().toISOString().slice(0, 10),
+        end_date: trialEnd.toISOString().slice(0, 10),
+      });
       toast.success('Bula! Your company is ready 🎉');
       onComplete();
     } catch {

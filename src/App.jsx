@@ -19,6 +19,8 @@ import UploadReceipt from '@/pages/UploadReceipt';
 import ReceiptReview from '@/pages/ReceiptReview';
 import ReceiptScannerAgent from '@/pages/ReceiptScannerAgent';
 import TaxReports from '@/pages/TaxReports';
+import Billing from '@/pages/Billing';
+import AdminBilling from '@/pages/AdminBilling';
 
 const AppContent = () => {
   const { company, loading, refreshContext } = useCompany();
@@ -50,6 +52,8 @@ const AppContent = () => {
         <Route path="/receipt-review" element={<ReceiptReview />} />
         <Route path="/receipt-scanner" element={<ReceiptScannerAgent />} />
         <Route path="/tax-reports" element={<TaxReports />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/admin-billing" element={<AdminBilling />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

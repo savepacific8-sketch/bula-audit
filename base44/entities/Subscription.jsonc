@@ -1,0 +1,63 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this subscription belongs to"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "free_trial",
+        "starter",
+        "business",
+        "pro",
+        "accountant"
+      ],
+      "description": "Subscription plan"
+    },
+    "billing_cycle": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "yearly"
+      ],
+      "default": "monthly"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "active",
+        "pending_payment",
+        "overdue",
+        "suspended",
+        "cancelled"
+      ],
+      "default": "trial"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "next_payment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "amount_due": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_id",
+    "plan"
+  ]
+}

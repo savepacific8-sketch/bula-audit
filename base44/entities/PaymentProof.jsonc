@@ -1,0 +1,73 @@
+{
+  "name": "PaymentProof",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "subscription_id": {
+      "type": "string"
+    },
+    "proof_url": {
+      "type": "string",
+      "description": "Uploaded screenshot or receipt"
+    },
+    "proof_filename": {
+      "type": "string"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "mpaisa",
+        "bank_transfer",
+        "cash",
+        "other"
+      ],
+      "description": "How payment was made"
+    },
+    "amount_paid": {
+      "type": "number"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "reference_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "submitted_by": {
+      "type": "string"
+    },
+    "plan_requested": {
+      "type": "string"
+    },
+    "billing_cycle_requested": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_id",
+    "proof_url",
+    "payment_method",
+    "amount_paid"
+  ]
+}
