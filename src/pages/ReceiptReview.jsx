@@ -26,18 +26,21 @@ const VAT_TYPES = [
 
 const r2 = (n) => Math.round(n * 100) / 100;
 
-// Returns updated { subtotal, vat_rate, vat_amount, total_amount } based on vat_type
+// Returns updated fields based on vat_type change
 function applyVatLogic(vat_type, current) {
   const sub   = parseFloat(current.subtotal)    || 0;
   const total = parseFloat(current.total_amount) || 0;
   const rate  = parseFloat(current.vat_rate)     || 12.5;
 
   if (vat_type === 'exclusive') {
+    // net subtotal + vat = total
     const vat = r2(sub * (rate / 100));
     return { vat_amount: vat, total_amount: r2(sub + vat) };
   }
   if (vat_type === 'inclusive') {
-    const vat     = r2(total * 12.5 / 112.5);
+    // total already includes VAT: net = total - vat, vat = net × rate
+    // Derive from total using: vat = total × rate / (100 + rate)
+    const vat     = r2(total * rate / (100 + rate));
     const subtotal = r2(total - vat);
     return { vat_amount: vat, subtotal };
   }
@@ -47,7 +50,6 @@ function applyVatLogic(vat_type, current) {
   if (vat_type === 'exempt' || vat_type === 'no_vat') {
     return { vat_rate: '', vat_amount: '', total_amount: r2(sub) };
   }
-  // manual — no auto-calc
   return {};
 }
 

@@ -27,7 +27,7 @@ const formatLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperC
 const EMPTY_FORM = {
   supplier_name: '', supplier_tin: '', receipt_number: '',
   receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: '',
-  vat_amount: '', total_amount: '', payment_method: '', category: '',
+  vat_type: 'inclusive', vat_amount: '', total_amount: '', payment_method: '', category: '',
   notes: '', item_lines: [], ai_confidence: null, ai_missing_fields: [],
   field_confidence: {}, validation_issues: [], image_quality_issues: [], needs_review: false,
 };
@@ -106,6 +106,7 @@ export default function UploadReceipt() {
         receipt_date:         result.receipt_date         || '',
         currency:             result.currency             || 'FJD',
         subtotal:             result.subtotal             ?? '',
+        vat_type:             result.vat_type             || 'inclusive',
         vat_rate:             result.vat_rate             ?? (company?.vat_rate || 12.5),
         vat_amount:           result.vat_amount           ?? '',
         total_amount:         result.total_amount         ?? '',
@@ -159,12 +160,25 @@ export default function UploadReceipt() {
       toast.error('Total amount is required. Please enter the total from the receipt.');
       return;
     }
+    // Validate math — handle both inclusive and exclusive VAT
     if (sub != null && vat != null) {
-      const expected = Math.round((sub + vat) * 100) / 100;
-      const actual   = Math.round(total * 100) / 100;
-      if (Math.abs(expected - actual) > 0.02) {
-        toast.error(`Numbers don't add up: ${sub} + ${vat} = ${expected}, but total is ${actual}. Please correct before saving.`);
-        return;
+      const vatType = form.vat_type || 'inclusive';
+      if (vatType === 'exclusive') {
+        // exclusive: net + vat = total
+        const expected = Math.round((sub + vat) * 100) / 100;
+        const actual   = Math.round(total * 100) / 100;
+        if (Math.abs(expected - actual) > 0.02) {
+          toast.error(`Numbers don't add up: ${sub} + ${vat} VAT = ${expected}, but total is ${actual}. Please correct before saving.`);
+          return;
+        }
+      } else if (vatType === 'inclusive') {
+        // inclusive: net + vat = total (net is already stored as subtotal)
+        const expected = Math.round((sub + vat) * 100) / 100;
+        const actual   = Math.round(total * 100) / 100;
+        if (Math.abs(expected - actual) > 0.02) {
+          toast.error(`VAT math doesn't add up: net ${sub} + VAT ${vat} = ${expected}, but total is ${actual}. Please correct before saving.`);
+          return;
+        }
       }
     }
 
@@ -179,6 +193,7 @@ export default function UploadReceipt() {
         receipt_number:       form.receipt_number   || undefined,
         receipt_date:         form.receipt_date     || undefined,
         currency:             form.currency         || 'FJD',
+        vat_type:             form.vat_type         || 'inclusive',
         subtotal:             form.subtotal         !== '' ? Number(form.subtotal) : undefined,
         vat_rate:             form.vat_rate         !== '' ? Number(form.vat_rate) : undefined,
         vat_amount:           form.vat_amount       !== '' ? Number(form.vat_amount) : undefined,
