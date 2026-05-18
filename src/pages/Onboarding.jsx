@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobileSelect } from '@/components/ui/MobileSelect';
 import { Loader2, Building2, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -146,16 +146,16 @@ export default function Onboarding({ onComplete }) {
               </div>
               <div>
                 <Label>Business Type</Label>
-                <Select value={form.business_type} onValueChange={v => update('business_type', v)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select business type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BUSINESS_TYPES.map(bt => (
-                      <SelectItem key={bt.value} value={bt.value}>{bt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MobileSelect
+                  value={form.business_type}
+                  onValueChange={v => update('business_type', v)}
+                  placeholder="Select business type"
+                  triggerClassName="mt-1 w-full"
+                >
+                  {BUSINESS_TYPES.map(bt => (
+                    <option key={bt.value} value={bt.value}>{bt.label}</option>
+                  ))}
+                </MobileSelect>
               </div>
               <div>
                 <Label>Business Address</Label>

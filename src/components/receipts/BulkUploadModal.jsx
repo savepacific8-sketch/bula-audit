@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -112,6 +112,18 @@ export default function BulkUploadModal({ open, onClose, onSuccess }) {
     onSuccess?.();
     toast.success(`Bulk upload complete`);
   };
+
+  // Close on browser back gesture / hardware back button
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ bulkUpload: true }, '');
+    const handlePop = () => {
+      if (!running) { setFiles([]); onClose(); }
+      else window.history.pushState({ bulkUpload: true }, ''); // block back while running
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [open, running, onClose]);
 
   const handleClose = () => {
     if (running) return;

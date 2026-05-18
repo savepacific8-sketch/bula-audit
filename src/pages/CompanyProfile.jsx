@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Save, Loader2, Building2, Trash2, AlertTriangle } from 'lucide-react';
+import { Save, Loader2, Building2, Trash2, AlertTriangle, UserCircle, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/layout/PageHeader';
 import {
@@ -24,6 +24,14 @@ export default function CompanyProfile() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (company) {
@@ -68,7 +76,7 @@ export default function CompanyProfile() {
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteCompany = async () => {
     setDeleting(true);
     try {
       await base44.auth.updateMe({ current_company_id: null, current_company_role: null });
@@ -78,6 +86,19 @@ export default function CompanyProfile() {
     } catch (err) {
       toast.error('Failed to delete. Please contact support.');
       setDeleting(false);
+    }
+  };
+
+  const handleDeleteMyAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      // Remove from company, then log out (platform handles account deletion via support)
+      await base44.auth.updateMe({ current_company_id: null, current_company_role: null });
+      toast.success('Account removed. You will be signed out.');
+      setTimeout(() => base44.auth.logout('/'), 1500);
+    } catch (err) {
+      toast.error('Failed to remove account. Please contact support.');
+      setDeletingAccount(false);
     }
   };
 
@@ -147,12 +168,38 @@ export default function CompanyProfile() {
         </Button>
       )}
 
-      {/* Delete Account */}
+      {/* ── User Account ─────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserCircle className="w-4 h-4 text-primary" />
+            User Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {currentUser && (
+            <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-1 text-sm">
+              <p className="font-medium">{currentUser.full_name}</p>
+              <p className="text-muted-foreground text-xs">{currentUser.email}</p>
+              <p className="text-muted-foreground text-xs capitalize">{currentUser.role} · {userRole} in company</p>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            className="gap-2 w-full sm:w-auto"
+            onClick={() => base44.auth.logout('/')}
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Business Danger Zone ─────────────────────────────── */}
       {canEdit && (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-destructive flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> Danger Zone
+              <AlertTriangle className="w-4 h-4" /> Business Danger Zone
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -170,6 +217,28 @@ export default function CompanyProfile() {
         </Card>
       )}
 
+      {/* ── User Account Danger Zone ─────────────────────────── */}
+      <Card className="border-destructive/40 bg-destructive/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-destructive flex items-center gap-2">
+            <UserCircle className="w-4 h-4" /> Delete My Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Remove your personal account from BULA AUDIT. You will be permanently signed out and your access revoked.
+          </p>
+          <Button
+            variant="destructive"
+            className="gap-2"
+            onClick={() => { setDeleteAccountConfirm(''); setShowDeleteAccountDialog(true); }}
+          >
+            <Trash2 className="w-4 h-4" /> Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Company dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -189,11 +258,41 @@ export default function CompanyProfile() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleteConfirm !== 'DELETE' || deleting}
-              onClick={handleDeleteAccount}
+              onClick={handleDeleteCompany}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
             >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               {deleting ? 'Deleting...' : 'Delete Forever'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete My Account dialog */}
+      <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Your Account?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">This will remove your access to BULA AUDIT and sign you out permanently.</span>
+              <span className="block mt-2">Type <strong>DELETE</strong> to confirm:</span>
+              <Input
+                value={deleteAccountConfirm}
+                onChange={e => setDeleteAccountConfirm(e.target.value)}
+                placeholder="Type DELETE"
+                className="mt-1"
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteAccountConfirm !== 'DELETE' || deletingAccount}
+              onClick={handleDeleteMyAccount}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+            >
+              {deletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {deletingAccount ? 'Removing...' : 'Delete My Account'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

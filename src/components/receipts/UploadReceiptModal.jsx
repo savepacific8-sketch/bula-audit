@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobileSelect } from '@/components/ui/MobileSelect';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
@@ -122,6 +122,15 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     }
   };
 
+  // Close on browser back gesture / hardware back button
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ uploadReceipt: true }, '');
+    const handlePop = () => { handleClose(); };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleClose = () => {
     setStep('upload');
     setPhotoUrl('');
@@ -234,12 +243,14 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
                 </div>
                 <div>
                   <Label className="text-xs">Payment Method</Label>
-                  <Select value={form.payment_method} onValueChange={v => updateField('payment_method', v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{formatLabel(m)}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <MobileSelect
+                    value={form.payment_method}
+                    onValueChange={v => updateField('payment_method', v)}
+                    placeholder="Select"
+                    triggerClassName="mt-1"
+                  >
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{formatLabel(m)}</option>)}
+                  </MobileSelect>
                 </div>
                 <div>
                   <Label className="text-xs">Subtotal (FJ$)</Label>
@@ -259,12 +270,14 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
                 </div>
                 <div className="col-span-2">
                   <Label className="text-xs">Category</Label>
-                  <Select value={form.category} onValueChange={v => updateField('category', v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{formatLabel(c)}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <MobileSelect
+                    value={form.category}
+                    onValueChange={v => updateField('category', v)}
+                    placeholder="Select category"
+                    triggerClassName="mt-1"
+                  >
+                    {CATEGORIES.map(c => <option key={c} value={c}>{formatLabel(c)}</option>)}
+                  </MobileSelect>
                 </div>
                 <div className="col-span-2">
                   <Label className="text-xs">Notes</Label>

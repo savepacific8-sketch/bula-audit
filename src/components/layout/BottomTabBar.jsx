@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Receipt, FileText, Building2 } from 'lucide-react';
 
 const tabs = [
@@ -10,26 +10,33 @@ const tabs = [
 
 export default function BottomTabBar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Only show on root routes
   const rootPaths = tabs.map(t => t.path);
   const isRootRoute = rootPaths.includes(location.pathname);
   if (!isRootRoute) return null;
 
+  const handleTabPress = (path) => {
+    if (location.pathname === path) {
+      // Already active — scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-card"
-      style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {tabs.map(({ path, label, icon: Icon }) => {
         const active = location.pathname === path;
         return (
-          <Link
+          <button
             key={path}
-            to={path}
-            className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors duration-150"
+            onClick={() => handleTabPress(path)}
+            className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors duration-150"
             style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
           >
             <Icon
@@ -48,7 +55,7 @@ export default function BottomTabBar() {
                 style={{ background: 'hsl(var(--primary))' }}
               />
             )}
-          </Link>
+          </button>
         );
       })}
     </nav>
