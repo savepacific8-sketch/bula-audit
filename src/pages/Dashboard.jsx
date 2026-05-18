@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { formatFJD, formatCategory } from '@/lib/formatCurrency';
@@ -9,10 +10,11 @@ import {
 } from 'lucide-react';
 import SpendingTrendsChat from '@/components/dashboard/SpendingTrendsChat';
 import MonthlyTaxSummary from '@/components/dashboard/MonthlyTaxSummary';
+import DashboardPeriodFilter, { buildPeriod } from '@/components/dashboard/DashboardPeriodFilter';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
 
 const COLORS = [
   'hsl(178,58%,30%)',
@@ -102,7 +104,7 @@ function DashboardHero({ company, month, action }) {
 /* ── Main Component ─────────────────────────────────────────────── */
 export default function Dashboard() {
   const { company } = useCompany();
-  const now = new Date();
+  const [period, setPeriod] = useState(() => buildPeriod('this_month'));
 
   const { data: receipts = [], isLoading } = useQuery({
     queryKey: ['receipts', company?.id],
@@ -113,24 +115,25 @@ export default function Dashboard() {
     refetchOnMount: true,
   });
 
-  const thisMonth = receipts.filter(r => {
+  // Filter receipts within selected period
+  const inPeriod = (r) => {
     if (!r.receipt_date) return false;
     const d = new Date(r.receipt_date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
+    return isWithinInterval(d, { start: period.start, end: period.end });
+  };
 
-  const approved = receipts.filter(r => r.status === 'approved');
-  const approvedThisMonth = thisMonth.filter(r => r.status === 'approved');
+  const periodReceipts = receipts.filter(inPeriod);
+  const approvedPeriod = periodReceipts.filter(r => r.status === 'approved');
 
-  const totalExpenses = approvedThisMonth.reduce((s, r) => s + (r.total_amount || 0), 0);
-  const totalVAT      = approvedThisMonth.reduce((s, r) => s + (r.vat_amount || 0), 0);
-  const pendingCount  = receipts.filter(r => r.status === 'pending').length;
-  const approvedCount = receipts.filter(r => r.status === 'approved').length;
-  const rejectedCount = receipts.filter(r => r.status === 'rejected').length;
+  const totalExpenses = approvedPeriod.reduce((s, r) => s + (r.total_amount || 0), 0);
+  const totalVAT      = approvedPeriod.reduce((s, r) => s + (r.vat_amount || 0), 0);
+  const pendingCount  = periodReceipts.filter(r => r.status === 'pending').length;
+  const approvedCount = approvedPeriod.length;
+  const rejectedCount = periodReceipts.filter(r => r.status === 'rejected').length;
 
-  // Top 5 categories
+  // Top 5 categories (approved only, in period)
   const categoryTotals = {};
-  approved.forEach(r => {
+  approvedPeriod.forEach(r => {
     if (r.category) categoryTotals[r.category] = (categoryTotals[r.category] || 0) + (r.total_amount || 0);
   });
   const topCategories = Object.entries(categoryTotals)
@@ -138,16 +141,16 @@ export default function Dashboard() {
     .slice(0, 5)
     .map(([name, total]) => ({ name: formatCategory(name), total }));
 
-  // Top 5 suppliers
+  // Top 5 suppliers (approved only, in period)
   const supplierTotals = {};
-  approved.forEach(r => {
+  approvedPeriod.forEach(r => {
     if (r.supplier_name) supplierTotals[r.supplier_name] = (supplierTotals[r.supplier_name] || 0) + (r.total_amount || 0);
   });
   const topSuppliers = Object.entries(supplierTotals)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
-  const recentReceipts = [...receipts]
+  const recentReceipts = [...periodReceipts]
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
     .slice(0, 6);
 
@@ -156,7 +159,13 @@ export default function Dashboard() {
     .sort((a, b) => (a.ai_confidence || 0) - (b.ai_confidence || 0))
     .slice(0, 5);
 
-  const month = now.toLocaleString('en-FJ', { month: 'long', year: 'numeric' });
+  // Dynamic card title suffix
+  const periodSuffix = period.type === 'this_month' ? 'This Month'
+    : period.type === 'last_month' ? 'Last Month'
+    : period.type === 'select_month' ? `— ${period.label}`
+    : '— Selected Period';
+
+  const month = period.label;
 
   if (isLoading) {
     return (
@@ -177,13 +186,16 @@ export default function Dashboard() {
       {/* Hero */}
       <DashboardHero company={company} month={month} />
 
+      {/* Period Filter */}
+      <DashboardPeriodFilter period={period} onChange={setPeriod} />
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatCard title="Expenses (Month)"  value={formatFJD(totalExpenses)}  icon={DollarSign}    accentColor="hsl(178,58%,30%)"  sub="approved only" />
-        <StatCard title="VAT Input Credit"  value={formatFJD(totalVAT)}       icon={TrendingUp}    accentColor="hsl(20,88%,54%)"   sub="approved only" />
-        <StatCard title="Pending Review"    value={pendingCount}               icon={Clock}         accentColor="hsl(38,80%,50%)"   sub="awaiting review" />
-        <StatCard title="Approved"          value={approvedCount}              icon={CheckCircle2}  accentColor="hsl(150,48%,42%)"  sub="all time" />
-        <StatCard title="Rejected"          value={rejectedCount}              icon={XCircle}       accentColor="hsl(0,72%,51%)"    sub="all time" />
+        <StatCard title={`Expenses ${periodSuffix}`}      value={formatFJD(totalExpenses)}  icon={DollarSign}    accentColor="hsl(178,58%,30%)"  sub="approved only" />
+        <StatCard title={`VAT Input Credit ${periodSuffix}`} value={formatFJD(totalVAT)}    icon={TrendingUp}    accentColor="hsl(20,88%,54%)"   sub="approved only" />
+        <StatCard title="Pending Review"                   value={pendingCount}               icon={Clock}         accentColor="hsl(38,80%,50%)"   sub="in period" />
+        <StatCard title="Approved"                         value={approvedCount}              icon={CheckCircle2}  accentColor="hsl(150,48%,42%)"  sub="in period" />
+        <StatCard title="Rejected"                         value={rejectedCount}              icon={XCircle}       accentColor="hsl(0,72%,51%)"    sub="in period" />
       </div>
 
       {/* Top Categories */}
@@ -290,7 +302,7 @@ export default function Dashboard() {
       </SectionCard>
 
       {/* Monthly Tax Summary */}
-      <MonthlyTaxSummary receipts={receipts} />
+      <MonthlyTaxSummary receipts={periodReceipts} />
 
       {/* AI Spending Analyst */}
       <SpendingTrendsChat />
