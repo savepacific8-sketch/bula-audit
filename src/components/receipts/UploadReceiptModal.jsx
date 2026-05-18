@@ -165,8 +165,8 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     />
 
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-lg flex flex-col p-0 gap-0" style={{ maxHeight: '90dvh', height: step === 'review' ? '90dvh' : 'auto' }}>
+        <DialogHeader className="px-5 pt-5 pb-3 flex-shrink-0 border-b border-border">
           <DialogTitle>
             {step === 'upload' && 'Upload Receipt'}
             {step === 'extract' && 'Scanning Receipt…'}
@@ -175,7 +175,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="space-y-4">
+          <div className="p-5">
             <button
               type="button"
               onClick={handlePickFile}
@@ -189,7 +189,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         )}
 
         {step === 'extract' && (
-          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+          <div className="flex flex-col items-center justify-center py-12 space-y-3 px-5">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
             <p className="text-sm font-medium">
               {uploading ? 'Uploading photo…' : 'Scanning with AI…'}
@@ -201,79 +201,85 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         )}
 
         {step === 'review' && (
-          <div className="space-y-3">
-            {photoUrl && (
-              <div className="rounded-lg overflow-hidden border border-border h-24">
-                <img src={photoUrl} alt="Receipt" className="w-full h-full object-contain bg-muted" />
-              </div>
-            )}
-            {form.ai_confidence != null && (
-              <div className={`rounded-lg px-3 py-2 text-xs flex items-center gap-2 ${form.ai_confidence >= 70 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                <span>✨ AI extracted · {form.ai_confidence}% confidence</span>
-                {form.ai_missing_fields?.length > 0 && <span className="ml-auto">Missing: {form.ai_missing_fields.join(', ')}</span>}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-              <div className="col-span-2">
-                <Label className="text-xs">Supplier Name</Label>
-                <Input className="mt-1" value={form.supplier_name} onChange={e => updateField('supplier_name', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Supplier TIN</Label>
-                <Input className="mt-1" value={form.supplier_tin} onChange={e => updateField('supplier_tin', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Receipt #</Label>
-                <Input className="mt-1" value={form.receipt_number} onChange={e => updateField('receipt_number', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Date</Label>
-                <Input type="date" value={form.receipt_date} onChange={e => updateField('receipt_date', e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Payment Method</Label>
-                <Select value={form.payment_method} onValueChange={v => updateField('payment_method', v)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{formatLabel(m)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Subtotal (FJ$)</Label>
-                <Input className="mt-1" type="number" step="0.01" value={form.subtotal} onChange={e => updateField('subtotal', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">VAT Rate (%)</Label>
-                <Input className="mt-1" type="number" step="0.1" value={form.vat_rate} onChange={e => updateField('vat_rate', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">VAT Amount (FJ$)</Label>
-                <Input className="mt-1" type="number" step="0.01" value={form.vat_amount} onChange={e => updateField('vat_amount', e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Total (FJ$)</Label>
-                <Input className="mt-1" type="number" step="0.01" value={form.total_amount} onChange={e => updateField('total_amount', e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-xs">Category</Label>
-                <Select value={form.category} onValueChange={v => updateField('category', v)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(c => <SelectItem key={c} value={c}>{formatLabel(c)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2">
-                <Label className="text-xs">Notes</Label>
-                <Textarea className="mt-1" rows={2} value={form.notes} onChange={e => updateField('notes', e.target.value)} />
+          <>
+            {/* Scrollable form area */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
+              {photoUrl && (
+                <div className="rounded-lg overflow-hidden border border-border h-24">
+                  <img src={photoUrl} alt="Receipt" className="w-full h-full object-contain bg-muted" />
+                </div>
+              )}
+              {form.ai_confidence != null && (
+                <div className={`rounded-lg px-3 py-2 text-xs flex items-center gap-2 ${form.ai_confidence >= 70 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                  <span>✨ AI extracted · {form.ai_confidence}% confidence</span>
+                  {form.ai_missing_fields?.length > 0 && <span className="ml-auto">Missing: {form.ai_missing_fields.join(', ')}</span>}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                <div className="col-span-2">
+                  <Label className="text-xs">Supplier Name</Label>
+                  <Input className="mt-1" value={form.supplier_name} onChange={e => updateField('supplier_name', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Supplier TIN</Label>
+                  <Input className="mt-1" value={form.supplier_tin} onChange={e => updateField('supplier_tin', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Receipt #</Label>
+                  <Input className="mt-1" value={form.receipt_number} onChange={e => updateField('receipt_number', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Date</Label>
+                  <Input type="date" value={form.receipt_date} onChange={e => updateField('receipt_date', e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Payment Method</Label>
+                  <Select value={form.payment_method} onValueChange={v => updateField('payment_method', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{formatLabel(m)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Subtotal (FJ$)</Label>
+                  <Input className="mt-1" type="number" step="0.01" value={form.subtotal} onChange={e => updateField('subtotal', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">VAT Rate (%)</Label>
+                  <Input className="mt-1" type="number" step="0.1" value={form.vat_rate} onChange={e => updateField('vat_rate', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">VAT Amount (FJ$)</Label>
+                  <Input className="mt-1" type="number" step="0.01" value={form.vat_amount} onChange={e => updateField('vat_amount', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Total (FJ$)</Label>
+                  <Input className="mt-1" type="number" step="0.01" value={form.total_amount} onChange={e => updateField('total_amount', e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs">Category</Label>
+                  <Select value={form.category} onValueChange={v => updateField('category', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{formatLabel(c)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs">Notes</Label>
+                  <Textarea className="mt-1" rows={2} value={form.notes} onChange={e => updateField('notes', e.target.value)} />
+                </div>
               </div>
             </div>
-            <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {saving ? 'Saving...' : 'Save Receipt'}
-            </Button>
-          </div>
+            {/* Fixed footer — always visible */}
+            <div className="flex-shrink-0 px-5 py-4 border-t border-border bg-background">
+              <Button onClick={handleSave} disabled={saving} className="w-full gap-2 ds-btn-primary h-12 text-base">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {saving ? 'Saving...' : 'Save Receipt'}
+              </Button>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
