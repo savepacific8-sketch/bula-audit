@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { extractReceiptData } from '@/lib/extractReceipt.js';
@@ -68,6 +69,7 @@ const statusConfig = {
 
 export default function ReceiptReview() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { company, canApprove } = useCompany();
 
   const [receipt, setReceipt] = useState(null);
@@ -142,6 +144,7 @@ export default function ReceiptReview() {
         category:       form.category       || undefined,
         notes:          form.notes          || undefined,
       });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
       toast.success('Changes saved');
     } catch {
       toast.error('Failed to save changes');
@@ -159,6 +162,7 @@ export default function ReceiptReview() {
         reviewed_by:   user.email,
         reviewed_date: new Date().toISOString(),
       });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
       toast.success(`Receipt ${newStatus}`);
       setReceipt(prev => ({ ...prev, status: newStatus, reviewed_by: user.email }));
     } catch {

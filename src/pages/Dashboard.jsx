@@ -109,6 +109,9 @@ export default function Dashboard() {
     queryKey: ['receipts', company?.id],
     queryFn: () => base44.entities.Receipt.filter({ company_id: company?.id }),
     enabled: !!company?.id,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const thisMonth = receipts.filter(r => {
