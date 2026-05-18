@@ -1,5 +1,6 @@
 import { PAYMENT_METHODS } from '@/lib/billing';
 import { useState } from 'react';
+import { Clock } from 'lucide-react';
 
 export default function PaymentInstructions({ amount, planName, cycle }) {
   const [selected, setSelected] = useState(PAYMENT_METHODS[0].value);
@@ -7,14 +8,27 @@ export default function PaymentInstructions({ amount, planName, cycle }) {
 
   return (
     <div className="space-y-4">
+      {/* Amount */}
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
-        <p className="text-xs text-muted-foreground mb-1">Amount due for <strong>{planName}</strong> ({cycle})</p>
+        <p className="text-xs text-muted-foreground mb-1">
+          Amount due for <strong>{planName}</strong> ({cycle})
+        </p>
         <p className="text-3xl font-bold text-primary">FJD ${amount}</p>
+      </div>
+
+      {/* How it works banner */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex gap-2.5">
+        <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-amber-800 leading-relaxed">
+          <strong>Manual verification:</strong> Pay via M-PAiSA or bank transfer, then upload your screenshot below. Our team will verify and activate your plan <strong>within 24 hours</strong>.
+        </div>
       </div>
 
       {/* Method tabs */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Payment Method</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          Payment Method
+        </p>
         <div className="flex gap-2 flex-wrap">
           {PAYMENT_METHODS.map(m => (
             <button
@@ -41,10 +55,6 @@ export default function PaymentInstructions({ amount, planName, cycle }) {
           </pre>
         </div>
       )}
-
-      <p className="text-[11px] text-muted-foreground text-center">
-        After paying, upload your proof of payment below. Our team will activate your plan within 24 hours.
-      </p>
     </div>
   );
 }

@@ -133,9 +133,24 @@ export const PLANS = {
 export const PLAN_ORDER = ['free_trial', 'starter', 'business', 'pro', 'accountant'];
 
 export const PAYMENT_METHODS = [
-  { value: 'mpaisa', label: 'M-PAiSA', icon: '📱', instructions: 'Send payment to M-PAiSA number: 9302-1234\nInclude your company name as reference.' },
-  { value: 'bank_transfer', label: 'Bank Transfer (BSP / ANZ / HFC)', icon: '🏦', instructions: 'BSP Account: 1234567890\nAccount Name: BULA AUDIT Ltd\nBranch: Suva Main\nInclude your company name as reference.' },
-  { value: 'cash', label: 'Cash / Admin Payment', icon: '💵', instructions: 'Contact our team at billing@bulaaudit.com.fj to arrange a cash payment or admin processing.' },
+  {
+    value: 'mpaisa',
+    label: 'M-PAiSA',
+    icon: '📱',
+    instructions: `1. Open your M-PAiSA app\n2. Select "Send Money"\n3. Enter the BULA AUDIT M-PAiSA number\n4. Enter the exact amount shown above\n5. Use your company name as the payment reference\n6. Take a screenshot of the confirmation screen\n7. Upload the screenshot below`,
+  },
+  {
+    value: 'bank_transfer',
+    label: 'Bank Transfer',
+    icon: '🏦',
+    instructions: `Transfer to:\n  Bank: BSP / ANZ / HFC (any Fiji bank)\n  Account Name: BULA AUDIT Ltd\n  Account Number: [provided on invoice]\n  Reference: Your company name\n\nAfter transferring, take a screenshot or save your receipt and upload it below.`,
+  },
+  {
+    value: 'cash',
+    label: 'Cash / Admin',
+    icon: '💵',
+    instructions: `Contact the BULA AUDIT team to arrange payment:\n  Email: billing@bulaaudit.com.fj\n\nOnce payment is received, our team will manually activate your subscription.`,
+  },
 ];
 
 export const STATUS_CONFIG = {
