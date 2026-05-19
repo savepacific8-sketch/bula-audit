@@ -19,10 +19,23 @@ export function CompanyProvider({ children }) {
       if (members.length > 0) {
         const member = members[0];
         setTeamMember(member);
-        // Load company
-        const companies = await base44.entities.Company.filter({ id: member.company_id });
-        if (companies.length > 0) {
-          setCompany(companies[0]);
+        // Ensure current_company_id is set on the user for RLS to work
+        if (!user.data?.current_company_id || user.data.current_company_id !== member.company_id) {
+          await base44.auth.updateMe({
+            current_company_id: member.company_id,
+            current_company_role: member.role,
+          });
+        }
+        // Load company — RLS allows read if current_company_id matches or owner_email matches
+        const ownedCompanies = await base44.entities.Company.filter({ owner_email: user.email });
+        const found = ownedCompanies.find(c => c.id === member.company_id);
+        if (found) {
+          setCompany(found);
+        } else {
+          // Try listing all accessible companies (covers non-owner members via RLS)
+          const allCompanies = await base44.entities.Company.list();
+          const match = allCompanies.find(c => c.id === member.company_id);
+          if (match) setCompany(match);
         }
         // company stays null if not found — triggers onboarding
       } else {

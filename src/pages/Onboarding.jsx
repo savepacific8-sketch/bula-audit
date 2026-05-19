@@ -27,6 +27,7 @@ const STEPS = [
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [form, setForm] = useState({
     name: '',
     tin: '',
@@ -56,26 +57,40 @@ export default function Onboarding({ onComplete }) {
 
   const handleSubmit = async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const user = await base44.auth.me();
+      if (!user) throw new Error('Not authenticated. Please refresh and try again.');
+
+      // 1. Create the company
       const company = await base44.entities.Company.create({
-        name: form.name,
-        tin: form.tin || undefined,
-        address: form.address || undefined,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
+        name: form.name.trim(),
+        tin: form.tin.trim() || undefined,
+        business_type: form.business_type || undefined,
+        address: form.address.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        email: form.email.trim() || undefined,
         vat_registered: form.vat_registered,
         vat_rate: Number(form.vat_rate) || 12.5,
         owner_email: user.email,
       });
+
+      // 2. Create the owner TeamMember record
       await base44.entities.TeamMember.create({
         company_id: company.id,
         user_email: user.email,
-        user_name: user.full_name,
+        user_name: user.full_name || user.email,
         role: 'owner',
         status: 'active',
       });
-      // Create a 14-day free trial subscription
+
+      // 3. Set current_company_id on the user so RLS/context works
+      await base44.auth.updateMe({
+        current_company_id: company.id,
+        current_company_role: 'owner',
+      });
+
+      // 4. Create a 14-day free trial subscription
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 14);
       await base44.entities.Subscription.create({
@@ -86,10 +101,13 @@ export default function Onboarding({ onComplete }) {
         start_date: new Date().toISOString().slice(0, 10),
         end_date: trialEnd.toISOString().slice(0, 10),
       });
+
       toast.success('Bula! Your company is ready 🎉');
       onComplete();
-    } catch {
-      toast.error('Failed to create company. Please try again.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create company. Please try again.';
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -241,6 +259,13 @@ export default function Onboarding({ onComplete }) {
                 {form.email && <SummaryRow label="Email" value={form.email} />}
                 <SummaryRow label="VAT" value={form.vat_registered ? `Registered (${form.vat_rate}%)` : 'Not registered'} />
               </div>
+            </div>
+          )}
+
+          {/* Error message */}
+          {errorMsg && (
+            <div className="mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              {errorMsg}
             </div>
           )}
 
