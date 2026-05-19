@@ -10,9 +10,24 @@ import { Link } from 'react-router-dom';
  */
 export default function UploadGuard({ children }) {
   const { uploadAllowed, limitReached, isExpired, isFreePlan, receiptsRemaining, receiptLimit, subscription } = useSubscription();
-  const { userRole } = useCompany();
+  const { userRole, canUpload } = useCompany();
 
-  if (uploadAllowed) return children;
+  if (canUpload && uploadAllowed) return children;
+
+  // Role-based block (accountant / unlinked user)
+  if (!canUpload) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+          <Lock className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-bold text-foreground text-base">Upload Not Permitted</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xs">Your role does not allow uploading receipts.</p>
+        </div>
+      </div>
+    );
+  }
 
   const showUpgrade = userRole === 'owner';
 
