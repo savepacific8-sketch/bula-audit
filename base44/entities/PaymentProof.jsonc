@@ -72,7 +72,28 @@
   ],
   "rls": {
     "create": {
-      "data.company_id": "{{user.data.current_company_id}}"
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.company_id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     "read": {
       "$or": [
