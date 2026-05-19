@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MobileSelect } from '@/components/ui/MobileSelect';
-import { Loader2, Building2, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Loader2, Building2, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BUSINESS_TYPES = [
@@ -24,10 +24,22 @@ const STEPS = [
   { id: 3, title: 'Tax & VAT', desc: 'Set up your tax settings' },
 ];
 
+// Individual creation steps shown during submission
+const CREATION_STEPS = [
+  { key: 'auth',    label: 'Verifying your account' },
+  { key: 'company', label: 'Creating company record' },
+  { key: 'member',  label: 'Assigning you as owner' },
+  { key: 'user',    label: 'Updating your profile' },
+  { key: 'trial',   label: 'Setting up free trial' },
+];
+
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [errorMsg, setErrorMsg] = useState(null);
+  const [creationProgress, setCreationProgress] = useState(null); // null | { stepKey, done: [] }
+
   const [form, setForm] = useState({
     name: '',
     tin: '',
@@ -39,76 +51,144 @@ export default function Onboarding({ onComplete }) {
     vat_rate: 12.5,
   });
 
-  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const update = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: null }));
+  };
 
   const validateStep = () => {
+    const errors = {};
     if (step === 1 && !form.name.trim()) {
-      toast.error('Company name is required');
-      return false;
+      errors.name = 'Company name is required';
     }
-    return true;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const next = () => {
     if (validateStep()) setStep(s => s + 1);
   };
 
-  const back = () => setStep(s => s - 1);
+  const back = () => {
+    setFieldErrors({});
+    setStep(s => s - 1);
+  };
+
+  const markStep = (key) => {
+    setCreationProgress(prev => ({
+      stepKey: key,
+      done: prev ? prev.done : [],
+    }));
+  };
+
+  const completeStep = (key) => {
+    setCreationProgress(prev => ({
+      stepKey: null,
+      done: [...(prev?.done || []), key],
+    }));
+  };
 
   const handleSubmit = async () => {
-    setLoading(true);
     setErrorMsg(null);
+    setFieldErrors({});
+
+    // Final validation before submitting
+    if (!form.name.trim()) {
+      setFieldErrors({ name: 'Company name is required' });
+      setStep(1);
+      toast.error('Please enter your company name first');
+      return;
+    }
+
+    setLoading(true);
+    setCreationProgress({ stepKey: null, done: [] });
+
+    let company = null;
+
     try {
+      // Step 1: verify auth
+      markStep('auth');
       const user = await base44.auth.me();
-      if (!user) throw new Error('Not authenticated. Please refresh and try again.');
+      if (!user) throw new Error('You are not logged in. Please refresh the page and try again.');
+      completeStep('auth');
 
-      // 1. Create the company
-      const company = await base44.entities.Company.create({
-        name: form.name.trim(),
-        tin: form.tin.trim() || undefined,
-        business_type: form.business_type || undefined,
-        address: form.address.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined,
-        vat_registered: form.vat_registered,
-        vat_rate: Number(form.vat_rate) || 12.5,
-        owner_email: user.email,
-      });
+      // Step 2: create company
+      markStep('company');
+      try {
+        company = await base44.entities.Company.create({
+          name: form.name.trim(),
+          tin: form.tin.trim() || undefined,
+          business_type: form.business_type || undefined,
+          address: form.address.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          vat_registered: form.vat_registered,
+          vat_rate: Number(form.vat_rate) || 12.5,
+          owner_email: user.email,
+        });
+      } catch (err) {
+        const detail = err?.response?.data?.message || err?.message || 'Unknown error';
+        throw new Error(`Failed to create company record: ${detail}`);
+      }
+      completeStep('company');
 
-      // 2. Create the owner TeamMember record
-      await base44.entities.TeamMember.create({
-        company_id: company.id,
-        user_email: user.email,
-        user_name: user.full_name || user.email,
-        role: 'owner',
-        status: 'active',
-      });
+      // Step 3: create team member
+      markStep('member');
+      try {
+        await base44.entities.TeamMember.create({
+          company_id: company.id,
+          user_email: user.email,
+          user_name: user.full_name || user.email,
+          role: 'owner',
+          status: 'active',
+        });
+      } catch (err) {
+        const detail = err?.response?.data?.message || err?.message || 'Unknown error';
+        throw new Error(`Company was created but failed to assign you as owner: ${detail}`);
+      }
+      completeStep('member');
 
-      // 3. Set current_company_id on the user so RLS/context works
-      await base44.auth.updateMe({
-        current_company_id: company.id,
-        current_company_role: 'owner',
-      });
+      // Step 4: update user profile with company context
+      markStep('user');
+      try {
+        await base44.auth.updateMe({
+          current_company_id: company.id,
+          current_company_role: 'owner',
+        });
+      } catch (err) {
+        // Non-fatal: log but continue
+        console.warn('Could not update user profile with company context:', err?.message);
+      }
+      completeStep('user');
 
-      // 4. Create a 14-day free trial subscription
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 14);
-      await base44.entities.Subscription.create({
-        company_id: company.id,
-        plan: 'free_trial',
-        billing_cycle: 'monthly',
-        status: 'trial',
-        start_date: new Date().toISOString().slice(0, 10),
-        end_date: trialEnd.toISOString().slice(0, 10),
-      });
+      // Step 5: create free trial subscription
+      markStep('trial');
+      try {
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 14);
+        await base44.entities.Subscription.create({
+          company_id: company.id,
+          plan: 'free_trial',
+          billing_cycle: 'monthly',
+          status: 'trial',
+          start_date: new Date().toISOString().slice(0, 10),
+          end_date: trialEnd.toISOString().slice(0, 10),
+        });
+      } catch (err) {
+        // Non-fatal: trial can be set up manually
+        console.warn('Could not create trial subscription:', err?.message);
+      }
+      completeStep('trial');
 
       toast.success('Bula! Your company is ready 🎉');
-      onComplete();
+      // Small delay so user sees all steps completed
+      setTimeout(() => onComplete(), 600);
+
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to create company. Please try again.';
+      const msg = err?.message || 'Something went wrong. Please try again.';
       setErrorMsg(msg);
       toast.error(msg);
-    } finally {
+      setCreationProgress(null);
       setLoading(false);
     }
   };
@@ -160,8 +240,13 @@ export default function Onboarding({ onComplete }) {
                   value={form.name}
                   onChange={e => update('name', e.target.value)}
                   placeholder="e.g. Fiji Fresh Produce Ltd"
-                  className="mt-1"
+                  className={`mt-1 ${fieldErrors.name ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
+                {fieldErrors.name && (
+                  <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.name}
+                  </p>
+                )}
               </div>
               <div>
                 <Label>TIN (Tax Identification Number)</Label>
@@ -262,16 +347,43 @@ export default function Onboarding({ onComplete }) {
             </div>
           )}
 
+          {/* Creation progress panel */}
+          {creationProgress !== null && (
+            <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Setting up your company...</p>
+              {CREATION_STEPS.map(cs => {
+                const isDone = creationProgress.done.includes(cs.key);
+                const isActive = creationProgress.stepKey === cs.key;
+                return (
+                  <div key={cs.key} className="flex items-center gap-2 text-sm">
+                    {isDone ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    ) : isActive ? (
+                      <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                    )}
+                    <span className={isDone ? 'text-foreground' : isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>
+                      {cs.label}
+                    </span>
+                    {isDone && <span className="text-xs text-emerald-600 ml-auto">Done</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Error message */}
           {errorMsg && (
-            <div className="mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {errorMsg}
+            <div className="mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Navigation */}
           <div className="flex gap-3 mt-6">
-            {step > 1 && (
+            {step > 1 && !loading && (
               <Button variant="outline" onClick={back} className="gap-1">
                 <ChevronLeft className="w-4 h-4" /> Back
               </Button>
