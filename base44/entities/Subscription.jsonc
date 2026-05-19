@@ -9,6 +9,7 @@
     "plan": {
       "type": "string",
       "enum": [
+        "free",
         "free_trial",
         "starter",
         "business",
@@ -28,6 +29,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "free",
         "trial",
         "active",
         "pending_payment",
@@ -74,7 +76,12 @@
               "data.company_id": "{{user.data.current_company_id}}"
             },
             {
-              "user.data.current_company_role": "owner"
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
             }
           ]
         }

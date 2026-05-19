@@ -91,8 +91,8 @@ function PaymentHistoryCard({ companyId }) {
 export default function Billing() {
   const { company, userRole } = useCompany();
   const {
-    subscription, plan, isLoading, monthlyUsage,
-    receiptLimit, limitReached, isExpired,
+    subscription, plan, isLoading, totalUsage,
+    receiptLimit, receiptsRemaining, limitReached, isExpired, isFreePlan,
   } = useSubscription();
   const queryClient = useQueryClient();
 
@@ -190,6 +190,21 @@ export default function Billing() {
         </div>
       )}
 
+      {/* ── Free plan remaining uploads banner ── */}
+      {isFreePlan && !limitReached && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-foreground text-sm">Free Plan</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {receiptsRemaining > 0
+                ? `${receiptsRemaining} receipt uploads remaining out of ${receiptLimit}`
+                : 'All free receipt uploads used'}
+            </p>
+          </div>
+          <span className="text-2xl font-bold text-primary shrink-0">{receiptsRemaining}</span>
+        </div>
+      )}
+
       {/* ── No subscription ── */}
       {!subscription && (
         <div className="rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center space-y-3">
@@ -260,7 +275,7 @@ export default function Billing() {
             </div>
 
             {/* Usage meter */}
-            <UsageMeter used={monthlyUsage} limit={receiptLimit} />
+            <UsageMeter used={totalUsage} limit={receiptLimit} />
 
             {/* Feature pills */}
             {plan && (

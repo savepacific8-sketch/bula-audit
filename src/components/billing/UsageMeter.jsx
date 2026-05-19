@@ -1,4 +1,5 @@
-export default function UsageMeter({ used, limit, label = 'Receipts this month' }) {
+export default function UsageMeter({ used, limit, label }) {
+  label = label ?? (limit <= 500 ? 'Total receipts uploaded' : 'Receipts this month');
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const isWarning = pct >= 80 && pct < 100;
   const isFull = pct >= 100;
@@ -31,12 +32,12 @@ export default function UsageMeter({ used, limit, label = 'Receipts this month' 
       </div>
       {isFull && (
         <p className="text-[11px] text-rose-600 font-medium">
-          Receipt limit reached — upgrade to continue uploading
+          Receipt limit reached — subscribe to continue uploading
         </p>
       )}
       {isWarning && (
         <p className="text-[11px] text-amber-600 font-medium">
-          {limit - used} receipts remaining this month
+          {limit - used} receipt uploads remaining
         </p>
       )}
     </div>

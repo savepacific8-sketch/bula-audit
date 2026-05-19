@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, X, CloudUpload } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import PullToRefresh from '@/components/layout/PullToRefresh';
@@ -21,7 +22,7 @@ export default function Receipts() {
   const { company, canUpload } = useCompany();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { uploadAllowed, monthlyUsage, receiptLimit } = useSubscription();
+  const { uploadAllowed, totalUsage, receiptLimit, receiptsRemaining, isFreePlan, limitReached } = useSubscription();
   const [showUpload, setShowUpload] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -146,7 +147,17 @@ export default function Receipts() {
       )}
 
       <div className="pt-1">
-        <UsageMeter used={monthlyUsage} limit={receiptLimit} />
+        <UsageMeter used={totalUsage} limit={receiptLimit} />
+        {isFreePlan && !limitReached && (
+          <p className="text-xs text-muted-foreground mt-1.5 text-center">
+            Free Plan: <span className="font-semibold text-primary">{receiptsRemaining}</span> receipt upload{receiptsRemaining !== 1 ? 's' : ''} remaining
+          </p>
+        )}
+        {isFreePlan && limitReached && (
+          <p className="text-xs text-rose-600 mt-1.5 text-center font-medium">
+            Free receipt limit reached. <Link to="/billing" className="underline">Subscribe to continue →</Link>
+          </p>
+        )}
       </div>
       <UploadReceiptModal open={showUpload && uploadAllowed} onClose={() => setShowUpload(false)} onSuccess={refresh} />
       <BulkUploadModal open={showBulk} onClose={() => setShowBulk(false)} onSuccess={refresh} />

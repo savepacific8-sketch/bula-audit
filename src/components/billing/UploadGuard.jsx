@@ -6,28 +6,31 @@ import { Link } from 'react-router-dom';
 
 /**
  * Wrap any upload entry point.
- * If uploads are not allowed (limit reached / expired / suspended),
- * renders a friendly block message instead of children.
+ * Blocks uploads when limit is reached or subscription is expired/suspended.
  */
 export default function UploadGuard({ children }) {
-  const { uploadAllowed, limitReached, isExpired, subscription } = useSubscription();
+  const { uploadAllowed, limitReached, isExpired, isFreePlan, receiptsRemaining, receiptLimit, subscription } = useSubscription();
   const { userRole } = useCompany();
 
   if (uploadAllowed) return children;
 
+  const showUpgrade = userRole === 'owner';
+
   let title = 'Upload Not Available';
   let message = 'You cannot upload receipts at the moment.';
-  let showUpgrade = userRole === 'owner';
 
-  if (limitReached) {
+  if (limitReached && isFreePlan) {
+    title = 'Free Plan Limit Reached';
+    message = `You have used all ${receiptLimit} free receipt uploads. Please subscribe to continue uploading receipts.`;
+  } else if (limitReached) {
     title = 'Monthly Receipt Limit Reached';
-    message = `You have reached your monthly receipt limit for your current plan. Upgrade your plan to continue uploading receipts.`;
+    message = `You have reached your monthly receipt limit. Upgrade your plan to continue uploading receipts.`;
   } else if (subscription?.status === 'overdue') {
     title = 'Payment Overdue';
-    message = 'Your subscription payment is overdue. You can still view your data, but receipt uploads and report exports are temporarily paused until payment is confirmed.';
+    message = 'Your subscription payment is overdue. Receipt uploads are paused until payment is confirmed.';
   } else if (isExpired || subscription?.status === 'suspended') {
     title = subscription?.status === 'suspended' ? 'Account Suspended' : 'Subscription Expired';
-    message = 'Your subscription payment is overdue. You can still view your data, but receipt uploads and report exports are temporarily paused until payment is confirmed.';
+    message = 'Your subscription has ended. You can still view your data, but uploads are paused until you renew.';
   } else if (!subscription) {
     title = 'No Active Plan';
     message = 'Choose a subscription plan to start uploading receipts.';

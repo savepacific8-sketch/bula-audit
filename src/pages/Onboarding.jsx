@@ -26,11 +26,11 @@ const STEPS = [
 
 // Individual creation steps shown during submission
 const CREATION_STEPS = [
-  { key: 'auth',    label: 'Verifying your account' },
-  { key: 'company', label: 'Creating company record' },
-  { key: 'member',  label: 'Assigning you as owner' },
-  { key: 'user',    label: 'Updating your profile' },
-  { key: 'trial',   label: 'Setting up free trial' },
+{ key: 'auth',    label: 'Verifying your account' },
+{ key: 'company', label: 'Creating company record' },
+{ key: 'member',  label: 'Assigning you as owner' },
+{ key: 'user',    label: 'Updating your profile' },
+{ key: 'trial',   label: 'Activating Free Plan (500 uploads)' },
 ];
 
 export default function Onboarding({ onComplete }) {
@@ -161,26 +161,23 @@ export default function Onboarding({ onComplete }) {
       }
       completeStep('user');
 
-      // Step 5: create free trial subscription
+      // Step 5: create free plan subscription (500 receipts, no expiry)
       markStep('trial');
       try {
-        const trialEnd = new Date();
-        trialEnd.setDate(trialEnd.getDate() + 14);
         await base44.entities.Subscription.create({
           company_id: company.id,
-          plan: 'free_trial',
+          plan: 'free',
           billing_cycle: 'monthly',
           status: 'trial',
           start_date: new Date().toISOString().slice(0, 10),
-          end_date: trialEnd.toISOString().slice(0, 10),
         });
       } catch (err) {
-        // Non-fatal: trial can be set up manually
-        console.warn('Could not create trial subscription:', err?.message);
+        // Non-fatal: can be set up manually
+        console.warn('Could not create free plan subscription:', err?.message);
       }
       completeStep('trial');
 
-      toast.success('Bula! Your company is ready 🎉');
+      toast.success('Bula! Company created. Free Plan activated — 500 receipt uploads included 🎉');
       // Small delay so user sees all steps completed
       setTimeout(() => onComplete(), 600);
 

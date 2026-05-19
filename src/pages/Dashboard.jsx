@@ -109,7 +109,7 @@ function DashboardHero({ company, month, action }) {
 /* ── Main Component ─────────────────────────────────────────────── */
 export default function Dashboard() {
   const { company, userRole } = useCompany();
-  const { subscription, monthlyUsage, receiptLimit, limitReached, isExpired } = useSubscription();
+  const { subscription, totalUsage, receiptLimit, receiptsRemaining, limitReached, isExpired, isFreePlan } = useSubscription();
   const [period, setPeriod] = useState(() => buildPeriod('this_month'));
   const queryClient = useQueryClient();
 
@@ -222,8 +222,17 @@ export default function Dashboard() {
       {limitReached && !isExpired && (
         <Link to="/billing" className="block rounded-2xl border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-          <span className="text-sm text-amber-800 font-medium flex-1">Monthly receipt limit reached — upgrade to continue</span>
+          <span className="text-sm text-amber-800 font-medium flex-1">
+            {isFreePlan ? 'Free Plan limit reached (500 uploads) — subscribe to continue' : 'Monthly receipt limit reached — upgrade to continue'}
+          </span>
           <ArrowRight className="w-4 h-4 text-amber-500 shrink-0" />
+        </Link>
+      )}
+      {isFreePlan && !limitReached && receiptsRemaining <= 50 && (
+        <Link to="/billing" className="block rounded-2xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-sm text-primary font-medium flex-1">Free Plan: {receiptsRemaining} receipt uploads remaining</span>
+          <ArrowRight className="w-4 h-4 text-primary/60 shrink-0" />
         </Link>
       )}
 
@@ -241,6 +250,18 @@ export default function Dashboard() {
         <StatCard title="Approved"                         value={approvedCount}              icon={CheckCircle2}  accentColor="hsl(150,48%,42%)"  sub="in period" />
         <StatCard title="Rejected"                         value={rejectedCount}              icon={XCircle}       accentColor="hsl(0,72%,51%)"    sub="in period" />
       </div>
+
+      {/* Free plan usage bar */}
+      {isFreePlan && (
+        <div className="ds-card p-4">
+          <UsageMeter used={totalUsage} limit={receiptLimit} label="Free Plan receipt uploads used" />
+          {!limitReached && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Free Plan: <span className="font-semibold text-primary">{receiptsRemaining}</span> upload{receiptsRemaining !== 1 ? 's' : ''} remaining
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 6-Month Expense Trend */}
       <SectionCard icon={TrendingUp} title="Monthly Expenses — Last 6 Months">

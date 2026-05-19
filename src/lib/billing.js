@@ -3,27 +3,49 @@
  */
 
 export const PLANS = {
-  free_trial: {
-    key: 'free_trial',
-    name: 'Free Trial',
-    tagline: '14-day full access',
+  free: {
+    key: 'free',
+    name: 'Free Plan',
+    tagline: '500 receipt uploads included',
     price_monthly: 0,
     price_yearly: 0,
-    receipt_limit: 20,
-    user_limit: 1,
-    trial_days: 14,
+    receipt_limit: 500,
+    user_limit: 5,
     color: 'hsl(210,12%,48%)',
     badge_class: 'bg-slate-100 text-slate-600 border-slate-200',
     features: [
-      'Up to 20 receipts',
-      '1 user (owner only)',
-      'Basic dashboard',
-      'AI extraction',
-      'No export after trial',
+      '500 total receipt uploads',
+      'AI receipt extraction',
+      'Dashboard & reports',
+      'Team access (owner, manager, staff)',
+      'Upgrade anytime',
     ],
-    exports: false,
+    exports: true,
     pdf_reports: false,
-    team_roles: false,
+    team_roles: true,
+    accountant_access: false,
+    multi_company: false,
+  },
+  free_trial: {
+    key: 'free_trial',
+    name: 'Free Plan',
+    tagline: '500 receipt uploads included',
+    price_monthly: 0,
+    price_yearly: 0,
+    receipt_limit: 500,
+    user_limit: 5,
+    color: 'hsl(210,12%,48%)',
+    badge_class: 'bg-slate-100 text-slate-600 border-slate-200',
+    features: [
+      '500 total receipt uploads',
+      'AI receipt extraction',
+      'Dashboard & reports',
+      'Team access (owner, manager, staff)',
+      'Upgrade anytime',
+    ],
+    exports: true,
+    pdf_reports: false,
+    team_roles: true,
     accountant_access: false,
     multi_company: false,
   },
@@ -132,6 +154,9 @@ export const PLANS = {
 
 export const PLAN_ORDER = ['free_trial', 'starter', 'business', 'pro', 'accountant'];
 
+// Plans that are always "active" (no expiry check needed)
+export const FREE_PLANS = ['free', 'free_trial'];
+
 export const PAYMENT_METHODS = [
   {
     value: 'mpaisa',
@@ -154,7 +179,8 @@ export const PAYMENT_METHODS = [
 ];
 
 export const STATUS_CONFIG = {
-  trial:           { label: 'Free Trial',        color: 'text-slate-600',   bg: 'bg-slate-100',  border: 'border-slate-200' },
+  free:            { label: 'Free Plan',          color: 'text-slate-600',   bg: 'bg-slate-100',  border: 'border-slate-200' },
+  trial:           { label: 'Free Plan',          color: 'text-slate-600',   bg: 'bg-slate-100',  border: 'border-slate-200' },
   active:          { label: 'Active',            color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
   pending_payment: { label: 'Pending Payment',   color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
   overdue:         { label: 'Overdue',           color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200' },
@@ -164,9 +190,11 @@ export const STATUS_CONFIG = {
 
 /**
  * Returns whether a subscription allows uploads.
+ * Free plan always allows uploads (until the 500 limit is reached).
  */
 export function canUploadReceipts(subscription) {
   if (!subscription) return false;
+  if (FREE_PLANS.includes(subscription.plan)) return true;
   return ['trial', 'active', 'pending_payment'].includes(subscription.status);
 }
 
