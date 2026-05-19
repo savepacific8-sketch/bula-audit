@@ -25,6 +25,8 @@ export function CompanyProvider({ children }) {
             current_company_id: member.company_id,
             current_company_role: member.role,
           });
+          // Re-fetch user so RLS token reflects the new company context
+          await base44.auth.me();
         }
         // Load company — RLS allows read if current_company_id matches or owner_email matches
         const ownedCompanies = await base44.entities.Company.filter({ owner_email: user.email });
@@ -75,6 +77,8 @@ export function CompanyProvider({ children }) {
   }, []);
 
   const refreshContext = () => {
+    setCompany(null);
+    setTeamMember(null);
     setLoading(true);
     loadContext();
   };
