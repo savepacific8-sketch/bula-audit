@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -21,6 +22,7 @@ const STATUS = {
 
 export default function BulkUploadModal({ open, onClose, onSuccess }) {
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const inputRef = useRef(null);
   const [files, setFiles] = useState([]);   // [{ id, file, status, error }]
   const [running, setRunning] = useState(false);
@@ -107,8 +109,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }) {
     }
 
     setRunning(false);
-    const doneCount = files.filter(f => f.status === 'done').length +
-      queued.filter((_, i) => files[files.findIndex(f => f.id === queued[i].id)]?.status === 'done').length;
+    queryClient.invalidateQueries({ queryKey: ['receipt-usage'] });
     onSuccess?.();
     toast.success(`Bulk upload complete`);
   };

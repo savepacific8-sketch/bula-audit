@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
+import UploadGuard from '@/components/billing/UploadGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,9 +42,10 @@ function fieldBorderClass(score) {
   return '';
 }
 
-export default function UploadReceipt() {
+function UploadReceiptInner() {
   const navigate = useNavigate();
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -214,6 +217,8 @@ export default function UploadReceipt() {
         document_name:        documentName || undefined,
       });
       setStep('done');
+      // Invalidate usage cache so dashboard/receipts show updated count immediately
+      queryClient.invalidateQueries({ queryKey: ['receipt-usage'] });
     } catch {
       toast.error('Failed to save receipt. Please try again.');
     } finally {
@@ -539,5 +544,13 @@ export default function UploadReceipt() {
         {saving ? 'Saving...' : uploading ? 'Still uploading...' : 'Save Receipt'}
       </Button>
     </div>
+  );
+}
+
+export default function UploadReceipt() {
+  return (
+    <UploadGuard>
+      <UploadReceiptInner />
+    </UploadGuard>
   );
 }

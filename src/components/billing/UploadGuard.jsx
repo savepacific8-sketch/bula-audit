@@ -32,8 +32,8 @@ export default function UploadGuard({ children }) {
     title = subscription?.status === 'suspended' ? 'Account Suspended' : 'Subscription Expired';
     message = 'Your subscription has ended. You can still view your data, but uploads are paused until you renew.';
   } else if (!subscription) {
-    title = 'No Active Plan';
-    message = 'Choose a subscription plan to start uploading receipts.';
+    title = 'Upload Not Available';
+    message = 'Your account is not yet set up for uploads. Please refresh the page or contact support.';
   }
 
   return (

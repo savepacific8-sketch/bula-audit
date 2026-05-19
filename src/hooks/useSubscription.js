@@ -43,7 +43,7 @@ export function useSubscription() {
       }
     },
     enabled: !!company?.id,
-    staleTime: 30_000,
+    staleTime: 0,
   });
 
   const plan = subscription ? PLANS[subscription.plan] : PLANS['free'];
@@ -56,8 +56,9 @@ export function useSubscription() {
     subscription?.end_date ? isAfter(new Date(), parseISO(subscription.end_date)) : false
   );
 
+  const isSuspended = subscription?.status === 'suspended';
   // If no subscription at all, treat as free plan — allow uploads until limit
-  const uploadAllowed = !isExpired && (isFreePlan || canUploadReceipts(subscription)) && !limitReached;
+  const uploadAllowed = !isExpired && !isSuspended && (isFreePlan || canUploadReceipts(subscription)) && !limitReached;
   const exportAllowed = isFreePlan ? true : (!isExpired && canExportReports(subscription));
 
   return {

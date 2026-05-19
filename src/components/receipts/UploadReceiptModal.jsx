@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'cheque', 'mobile_mone
 
 export default function UploadReceiptModal({ open, onClose, onSuccess }) {
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -113,6 +115,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         uploaded_by:      user.email,
       });
       toast.success('Receipt saved!');
+      queryClient.invalidateQueries({ queryKey: ['receipt-usage'] });
       onSuccess();
       handleClose();
     } catch (err) {
