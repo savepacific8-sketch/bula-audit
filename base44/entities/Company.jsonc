@@ -48,6 +48,11 @@
     "owner_email": {
       "type": "string",
       "description": "Email of the company owner"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description of the company"
     }
   },
   "required": [

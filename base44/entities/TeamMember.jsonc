@@ -32,6 +32,11 @@
       ],
       "default": "active",
       "description": "Whether the team member is active"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description or notes about the team member"
     }
   },
   "required": [

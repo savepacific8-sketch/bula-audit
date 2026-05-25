@@ -62,6 +62,11 @@
     },
     "billing_cycle_requested": {
       "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description or notes about the payment"
     }
   },
   "required": [
