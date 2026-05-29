@@ -48,7 +48,7 @@ export default function Onboarding({ onComplete }) {
     phone: '',
     email: '',
     vat_registered: false,
-    vat_rate: 12.5,
+    vat_rate: '12.5',
   });
 
   const update = (field, value) => {
@@ -225,6 +225,16 @@ export default function Onboarding({ onComplete }) {
           <div className="mb-6">
             <h2 className="text-lg font-semibold">{STEPS[step - 1].title}</h2>
             <p className="text-sm text-muted-foreground">{STEPS[step - 1].desc}</p>
+            {step === 2 && (
+              <p className="text-[11px] text-muted-foreground mt-2 italic">
+                Optional - you can fill these in later from Company Profile.
+              </p>
+            )}
+            {step === 3 && (
+              <p className="text-[11px] text-muted-foreground mt-2 italic">
+                Used as the default for new receipts. You can override on each receipt.
+              </p>
+            )}
           </div>
 
           {/* Step 1: Business Identity */}
@@ -318,16 +328,21 @@ export default function Onboarding({ onComplete }) {
               </div>
               <div>
                 <Label>Default VAT Rate (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={form.vat_rate}
-                  onChange={e => update('vat_rate', e.target.value)}
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Standard Fiji VAT is 15% (was 12.5% before 2023)</p>
+                <MobileSelect
+                  value={String(form.vat_rate)}
+                  onValueChange={v => update('vat_rate', v)}
+                  placeholder="Select VAT rate"
+                  triggerClassName="mt-1 w-full"
+                >
+                  <option value="12.5">12.5%  - Current standard rate (Aug 2025 onwards)</option>
+                  <option value="15">15%   - Aug 2023 to Jul 2025</option>
+                  <option value="9">9%    - Before Aug 2023</option>
+                  <option value="0">0%    - Zero-rated / exempt</option>
+                </MobileSelect>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The current standard Fiji VAT rate is 12.5% (effective Aug 2025).
+                  You can override this on individual receipts.
+                </p>
               </div>
 
               {/* Summary */}

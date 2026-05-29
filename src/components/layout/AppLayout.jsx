@@ -1,29 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield, X, CreditCard, ShieldCheck } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import {
+  LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield,
+  X, CreditCard, ShieldCheck, Settings as SettingsIcon, ScrollText, UserCircle,
+  MailWarning, Plus,
+} from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
+import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 import BulaLogo from '@/components/layout/BulaLogo';
 import BottomTabBar from '@/components/layout/BottomTabBar';
 import MobileHeader from '@/components/layout/MobileHeader';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { path: '/',            label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/receipts',    label: 'Receipts',  icon: Receipt },
-  { path: '/reports',     label: 'Reports',   icon: FileText },
-  { path: '/tax-reports', label: 'VAT',       icon: Shield, restricted: true },
-  { path: '/team',        label: 'Team',      icon: Users },
-  { path: '/company',     label: 'Company',   icon: Building2 },
-  { path: '/billing',     label: 'Billing',   icon: CreditCard, ownerOnly: true },
+  { path: '/',              label: 'Dashboard',     icon: LayoutDashboard },
+  { path: '/receipts',      label: 'Receipts',      icon: Receipt },
+  { path: '/reports',       label: 'Reports',       icon: FileText },
+  { path: '/tax-reports',   label: 'VAT',           icon: Shield, restricted: true },
+  { path: '/team',          label: 'Team',          icon: Users, managerOrOwner: true },
+  { path: '/company',       label: 'Company',       icon: Building2 },
+  { path: '/billing',       label: 'Billing',       icon: CreditCard, ownerOnly: true },
   { path: '/admin-billing', label: 'Admin Billing', icon: ShieldCheck, adminOnly: true },
+];
+
+const accountItems = [
+  { path: '/settings',  label: 'Settings',  icon: SettingsIcon },
+  { path: '/audit-log', label: 'Audit Log', icon: ScrollText, adminOnly: true },
 ];
 
 const ROOT_PATHS = ['/', '/receipts', '/reports', '/company', '/tax-reports', '/team', '/billing', '/admin-billing'];
 
-function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
+function Sidebar({ filteredNav, filteredAccount, company, canUpload, user, onNavigate, onLogout }) {
   const location = useLocation();
-  const handleLogout = () => base44.auth.logout('/');
 
   return (
     <div className="flex flex-col h-full masi-pattern" style={{ background: 'hsl(var(--fiji-deep))' }}>
@@ -47,28 +57,9 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {filteredNav.map(item => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onNavigate}
-              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ${
-                isActive
-                  ? 'bg-white/15 text-white border border-white/10 shadow-sm'
-                  : 'text-white/55 hover:bg-white/8 hover:text-white/85'
-              }`}
-            >
-              <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-white/45'}`} />
-              <span className="flex-1">{item.label}</span>
-              {isActive && (
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'hsl(var(--accent))' }} />
-              )}
-            </Link>
-          );
-        })}
+        {filteredNav.map(item => (
+          <NavLink key={item.path} item={item} active={location.pathname === item.path} onNavigate={onNavigate} />
+        ))}
 
         {canUpload && (
           <Link
@@ -81,18 +72,101 @@ function Sidebar({ filteredNav, company, canUpload, onNavigate }) {
             Upload Receipt
           </Link>
         )}
+
+        {filteredAccount.length > 0 && (
+          <>
+            <div className="px-3 mt-5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/35">Account</div>
+            {filteredAccount.map(item => (
+              <NavLink key={item.path} item={item} active={location.pathname === item.path} onNavigate={onNavigate} />
+            ))}
+          </>
+        )}
       </nav>
 
+      {/* User card + sign-out */}
       <div className="px-3 pb-6 border-t border-white/10 pt-3">
+        {user && (
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl mb-1">
+            <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0 overflow-hidden">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <UserCircle className="w-5 h-5 text-white/70" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-xs font-medium truncate">{user.full_name || user.email}</p>
+              <p className="text-white/40 text-[10px] truncate">{user.email}</p>
+            </div>
+          </div>
+        )}
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/45 hover:bg-white/8 hover:text-white/80 w-full transition-all"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/55 hover:bg-white/8 hover:text-white w-full transition-all"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          Sign out
         </button>
       </div>
+    </div>
+  );
+}
+
+function NavLink({ item, active, onNavigate }) {
+  return (
+    <Link
+      to={item.path}
+      onClick={onNavigate}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ${
+        active
+          ? 'bg-white/15 text-white border border-white/10 shadow-sm'
+          : 'text-white/55 hover:bg-white/8 hover:text-white/85'
+      }`}
+    >
+      <item.icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-white/45'}`} />
+      <span className="flex-1">{item.label}</span>
+      {active && (
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'hsl(var(--accent))' }} />
+      )}
+    </Link>
+  );
+}
+
+function EmailVerifyBanner({ user }) {
+  const [resending, setResending] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (!user || user.email_verified !== false) return null;
+
+  const resend = async () => {
+    setResending(true);
+    try {
+      await base44.auth.resendVerification();
+      setSent(true);
+    } catch {
+      // silent — user can retry
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-3">
+      <MailWarning className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0 text-xs">
+        <p className="font-semibold text-amber-900">Verify your email</p>
+        <p className="text-amber-800 mt-0.5">
+          {sent
+            ? 'Check your inbox for the verification link.'
+            : 'We sent a link to ' + user.email + '. Click it to confirm.'}
+        </p>
+      </div>
+      {!sent && (
+        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0 border-amber-300 text-amber-900 hover:bg-amber-100" onClick={resend} disabled={resending}>
+          {resending ? 'Sending...' : 'Resend'}
+        </Button>
+      )}
     </div>
   );
 }
@@ -106,17 +180,25 @@ const pageVariants = {
 export default function AppLayout() {
   const location = useLocation();
   const { company, userRole, canUpload } = useCompany();
-  const [appUserRole, setAppUserRole] = useState(null);
-  // Load base44 app-level role for admin-only nav items
-  useState(() => { base44.auth.me().then(u => setAppUserRole(u?.role)).catch(() => {}); });
+  const { user, logout } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const isRoot = ROOT_PATHS.includes(location.pathname);
 
+  // Close drawer on route change
+  useEffect(() => { setMobileDrawerOpen(false); }, [location.pathname]);
+
+  const isAdmin = user?.role === 'admin';
+
   const filteredNav = navItems.filter(item => {
-    if (item.path === '/team' && userRole !== 'owner' && userRole !== 'manager') return false;
+    if (item.managerOrOwner && userRole !== 'owner' && userRole !== 'manager') return false;
     if (item.restricted && userRole !== 'owner' && userRole !== 'manager' && userRole !== 'accountant') return false;
     if (item.ownerOnly && userRole !== 'owner' && userRole !== 'accountant') return false;
-    if (item.adminOnly && appUserRole !== 'admin') return false;
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
+  const filteredAccount = accountItems.filter(item => {
+    if (item.adminOnly && !isAdmin) return false;
     return true;
   });
 
@@ -129,12 +211,20 @@ export default function AppLayout() {
         WebkitOverscrollBehavior: 'none',
       }}
     >
-      {/* ── Desktop Sidebar ─────────────────────────────────────── */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 fixed h-full z-30">
-        <Sidebar filteredNav={filteredNav} company={company} canUpload={canUpload} onNavigate={() => {}} />
+        <Sidebar
+          filteredNav={filteredNav}
+          filteredAccount={filteredAccount}
+          company={company}
+          canUpload={canUpload}
+          user={user}
+          onNavigate={() => {}}
+          onLogout={logout}
+        />
       </aside>
 
-      {/* ── Mobile Drawer (for non-tab items) ───────────────────── */}
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {mobileDrawerOpen && (
           <>
@@ -156,21 +246,30 @@ export default function AppLayout() {
             >
               <button
                 onClick={() => setMobileDrawerOpen(false)}
-                className="absolute top-4 right-4 z-10 text-white/60 hover:text-white"
+                className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
                 style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
               </button>
-              <Sidebar filteredNav={filteredNav} company={company} canUpload={canUpload} onNavigate={() => setMobileDrawerOpen(false)} />
+              <Sidebar
+                filteredNav={filteredNav}
+                filteredAccount={filteredAccount}
+                company={company}
+                canUpload={canUpload}
+                user={user}
+                onNavigate={() => setMobileDrawerOpen(false)}
+                onLogout={() => { setMobileDrawerOpen(false); logout(); }}
+              />
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      {/* ── Mobile Top Header ───────────────────────────────────── */}
-      <MobileHeader company={company} />
+      {/* Mobile Top Header */}
+      <MobileHeader company={company} onMenuClick={() => setMobileDrawerOpen(true)} />
 
-      {/* ── Main Content ─────────────────────────────────────────── */}
+      {/* Main */}
       <main
         className="flex-1 md:ml-64 overflow-y-auto"
         style={{
@@ -181,6 +280,7 @@ export default function AppLayout() {
         }}
       >
         <div className="p-4 md:p-8 md:pt-6 max-w-6xl mx-auto">
+          <EmailVerifyBanner user={user} />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}
@@ -195,7 +295,24 @@ export default function AppLayout() {
         </div>
       </main>
 
-      {/* ── Bottom Tab Bar (mobile only) ─────────────────────────── */}
+      {/* Floating Upload Action (mobile, when allowed) */}
+      {canUpload && !mobileDrawerOpen && (
+        <Link
+          to="/upload"
+          className="md:hidden fixed z-30 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
+          style={{
+            background: 'hsl(var(--accent))',
+            width: 56,
+            height: 56,
+            bottom: `calc(${isRoot ? '72px' : '20px'} + env(safe-area-inset-bottom, 0px))`,
+            right: '20px',
+          }}
+          aria-label="Upload receipt"
+        >
+          <Plus className="w-6 h-6 text-white" />
+        </Link>
+      )}
+
       <BottomTabBar />
     </div>
   );

@@ -1,0 +1,338 @@
+// BULA AUDIT — Prisma schema
+//
+// Default provider: SQLite (zero-setup for dev/assignment).
+// To switch to MySQL later:
+//   1. Change provider below to "mysql"
+//   2. Set DATABASE_URL in .env to your MySQL URL
+//   3. Re-add @db.Text / @db.Date / @db.VarChar annotations if you want
+//      MySQL-specific column types (Prisma will use sensible defaults otherwise)
+//   4. Run: npm run prisma:migrate -- --name switch-to-mysql
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Production uses MySQL (Railway plugin). For local SQLite dev, change
+// provider to "sqlite", remove relationMode, and set DATABASE_URL="file:./dev.db".
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// SQLite does not have native enums, so we use String + comments documenting
+// the allowed values. Validation is enforced at the API layer via zod.
+
+// ───────────────────────────────────────────────────────────────────────
+// User (replaces Base44 auth)
+// role: "user" | "admin"
+// currentCompanyRole: "owner" | "manager" | "staff" | "accountant"
+// ───────────────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  fullName     String?
+  avatarUrl    String?
+  role         String   @default("user")
+
+  currentCompanyId   String?
+  currentCompanyRole String?
+
+  // Account lockout / brute-force protection
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+
+  // Email verification (for production sign-up flow)
+  emailVerified            Boolean   @default(false)
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
+
+  // Password reset
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+
+  // Incremented on logout-everywhere / password change to invalidate all
+  // outstanding refresh tokens issued before this version.
+  tokenVersion Int @default(0)
+
+  // Two-factor authentication (TOTP)
+  totpSecret      String?
+  totpEnabled     Boolean   @default(false)
+  totpConfirmedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedCompanies Company[]      @relation("CompanyOwner")
+  memberships    TeamMember[]
+  conversations  Conversation[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+  backupCodes    BackupCode[]
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// 2FA backup codes — one-time-use recovery codes (hashed in DB).
+// ───────────────────────────────────────────────────────────────────────
+model BackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// RefreshToken — opaque token stored as SHA-256 hash. One row per active
+// session (browser, mobile, etc.). Rotated on every refresh.
+// ───────────────────────────────────────────────────────────────────────
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
+  tokenVersion Int       @default(0)
+  userAgent    String?
+  ip           String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// AuditLog — every sensitive mutation (auth, role changes, company ops,
+// receipt edits, deletes) is recorded here. Required for FRCS-style
+// retention and incident investigation.
+// ───────────────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail  String?
+  action     String
+  entity     String?
+  entityId   String?
+  companyId  String?
+  ip         String?
+  userAgent  String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// AI agent conversations
+// agentId: "receipt_scanner" | "fiji_vat_advisor" | "spending_trends"
+// ───────────────────────────────────────────────────────────────────────
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId   String
+  title     String?
+  metadata  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([userId])
+  @@index([agentId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Company
+// businessType: "sole_trader" | "partnership" | "limited_company" |
+//                "cooperative" | "ngo" | "government" | "other"
+// ───────────────────────────────────────────────────────────────────────
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  tin           String?
+  businessType  String?
+  phone         String?
+  email         String?
+  address       String?
+  vatRegistered Boolean  @default(false)
+  vatRate       Float    @default(12.5)
+  ownerEmail    String
+  owner         User?    @relation("CompanyOwner", fields: [ownerEmail], references: [email])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teamMembers   TeamMember[]
+  receipts      Receipt[]
+  subscriptions Subscription[]
+  paymentProofs PaymentProof[]
+
+  @@index([ownerEmail])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// TeamMember
+// role:   "owner" | "manager" | "staff" | "accountant"
+// status: "active" | "inactive"
+// ───────────────────────────────────────────────────────────────────────
+model TeamMember {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userEmail String
+  user      User?   @relation(fields: [userEmail], references: [email])
+  userName  String?
+  role      String
+  status    String  @default("active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, userEmail])
+  @@index([companyId])
+  @@index([userEmail])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Receipt
+// vatType:        "inclusive" | "exclusive" | "zero_rated" | "exempt" | "no_vat" | "manual"
+// paymentMethod:  "cash" | "card" | "bank_transfer" | "cheque" | "mobile_money" | "other"
+// paymentStatus:  "unpaid" | "paid"
+// category:       see CATEGORIES list in code
+// status:         "pending" | "approved" | "rejected"
+// itemLines / aiMissingFields: JSON strings (SQLite has no JSON type;
+//                              parsed in API layer)
+// ───────────────────────────────────────────────────────────────────────
+model Receipt {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  photoUrl     String
+  documentUrl  String?
+  documentName String?
+
+  supplierName  String?
+  supplierTin   String?
+  receiptNumber String?
+  receiptDate   DateTime?
+  dueDate       DateTime?
+
+  currency String? @default("FJD")
+  subtotal Float?
+
+  vatType     String  @default("inclusive")
+  vatRate     Float?
+  vatAmount   Float?
+  totalAmount Float?
+
+  paymentMethod String?
+  paymentStatus String  @default("unpaid")
+  category      String?
+
+  itemLines       String?
+  aiConfidence    Float?
+  aiMissingFields String?
+
+  status       String   @default("pending")
+  notes        String?
+  uploadedBy   String?
+  reviewedBy   String?
+  reviewedDate DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([uploadedBy])
+  @@index([receiptDate])
+  @@index([deletedAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Subscription
+// plan:         "free" | "free_trial" | "starter" | "business" | "pro" | "accountant"
+// billingCycle: "monthly" | "yearly"
+// status:       "free" | "trial" | "active" | "pending_payment" | "overdue" | "suspended" | "cancelled"
+// ───────────────────────────────────────────────────────────────────────
+model Subscription {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  plan            String
+  billingCycle    String  @default("monthly")
+  status          String  @default("trial")
+  startDate       DateTime?
+  endDate         DateTime?
+  nextPaymentDate DateTime?
+  amountDue       Float?
+  notes           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paymentProofs PaymentProof[]
+
+  @@index([companyId])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// PaymentProof
+// paymentMethod: "mpaisa" | "bank_transfer" | "cash" | "other"
+// status:        "pending" | "approved" | "rejected"
+// ───────────────────────────────────────────────────────────────────────
+model PaymentProof {
+  id             String        @id @default(cuid())
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  proofUrl        String
+  proofFilename   String?
+  paymentMethod   String
+  amountPaid      Float
+  paymentDate     DateTime?
+  referenceNumber String?
+
+  status                String   @default("pending")
+  reviewedBy            String?
+  reviewedDate          DateTime?
+  reviewNotes           String?
+  submittedBy           String?
+  planRequested         String?
+  billingCycleRequested String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([subscriptionId])
+  @@index([submittedBy])
+}

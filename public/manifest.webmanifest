@@ -1,0 +1,34 @@
+{
+  "name": "BULA AUDIT",
+  "short_name": "BULA",
+  "description": "Receipt management and VAT tracking for Fiji small businesses",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#1a7a6d",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/bula-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload receipt",
+      "short_name": "Upload",
+      "url": "/upload",
+      "description": "Scan a new receipt"
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/",
+      "description": "View dashboard"
+    }
+  ]
+}

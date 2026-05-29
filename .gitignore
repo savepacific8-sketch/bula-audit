@@ -29,3 +29,8 @@ dist-ssr
 
 .env
 .vite
+.vite.pid
+.dev.pid
+.dev.out.log
+.dev.err.log
+fix-deps.ps1

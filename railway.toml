@@ -1,0 +1,16 @@
+# Railway deploy config (single service serving frontend + backend).
+# - Build steps: install root deps -> build frontend -> install server deps -> prisma generate -> build server
+# - Start: prisma db push (sync schema to MySQL plugin) -> run compiled server
+# - The compiled server serves the built frontend as static files in production
+# - Health check at /api/health (returns 200 once DB is up)
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run build && cd server && npm install && npx prisma generate && npm run build"
+
+[deploy]
+startCommand = "cd server && npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
