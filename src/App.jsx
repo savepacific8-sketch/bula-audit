@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { CompanyProvider, useCompany } from '@/lib/useCompanyContext.jsx';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
@@ -74,23 +75,7 @@ const AppContent = () => {
   );
 };
 
-const RequireAuth = ({ children }) => {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
-  const location = useLocation();
 
-  if (isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-  if (!isAuthenticated) {
-    const from = location.pathname + location.search;
-    return <Navigate to={`/login?from=${encodeURIComponent(from)}`} replace />;
-  }
-  return children;
-};
 
 const RoutedApp = () => {
   useSystemDarkMode();
@@ -98,21 +83,22 @@ const RoutedApp = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/register" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
-      <Route
-        path="/*"
-        element={
-          <RequireAuth>
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route
+          path="/*"
+          element={
             <CompanyProvider>
               <AppContent />
             </CompanyProvider>
-          </RequireAuth>
-        }
-      />
+          }
+        />
+      </Route>
     </Routes>
   );
 };

@@ -18,8 +18,6 @@ export default function Login() {
   const [challengeToken, setChallengeToken] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-
   const fromRaw = new URLSearchParams(location.search).get('from') || '/';
   const from =
     typeof fromRaw === 'string' &&
@@ -31,12 +29,6 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated) navigate(from, { replace: true });
   }, [isAuthenticated, from, navigate]);
-
-  useEffect(() => {
-    base44.auth.googleStatus()
-      .then((s) => setGoogleEnabled(Boolean(s?.configured)))
-      .catch(() => setGoogleEnabled(false));
-  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -195,26 +187,48 @@ export default function Login() {
             </Link>
           </div>
 
-          {googleEnabled && (
-            <>
-              <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-              <a
-                href={base44.auth.getGoogleLoginUrl(window.location.origin + from)}
-                className="block"
-              >
-                <Button type="button" variant="outline" className="w-full">
-                  Continue with Google
-                </Button>
-              </a>
-            </>
-          )}
+          <div className="relative my-2">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('google', window.location.origin + from)}
+            >
+              Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('microsoft', window.location.origin + from)}
+            >
+              Continue with Microsoft
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('facebook', window.location.origin + from)}
+            >
+              Continue with Facebook
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('apple', window.location.origin + from)}
+            >
+              Continue with Apple
+            </Button>
+          </div>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">

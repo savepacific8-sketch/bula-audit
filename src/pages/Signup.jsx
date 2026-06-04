@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 import BulaLogo from '@/components/layout/BulaLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,6 +135,49 @@ export default function Signup() {
             {' '}and{' '}
             <Link to="/privacy" className="underline hover:text-primary">Privacy Policy</Link>.
           </p>
+
+          <div className="relative my-2">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('google', '/')}
+            >
+              Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('microsoft', '/')}
+            >
+              Continue with Microsoft
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('facebook', '/')}
+            >
+              Continue with Facebook
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => base44.auth.loginWithProvider('apple', '/')}
+            >
+              Continue with Apple
+            </Button>
+          </div>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
