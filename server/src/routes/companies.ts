@@ -111,7 +111,7 @@ router.patch('/:id', async (req, res) => {
   if (!company) throw new HttpError(404, 'Company not found');
 
   if (!isAdmin(user) && company.ownerEmail !== user.email) {
-    requireCompanyRole(user, company.id, ['owner', 'manager']);
+    await requireCompanyRole(user, company.id, ['owner', 'manager']);
   }
 
   const data = upsertSchema.partial().parse(req.body);

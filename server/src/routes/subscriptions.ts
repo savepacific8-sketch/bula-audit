@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
 
   if (!isAdmin(user)) {
     if (typeof company_id !== 'string') return res.json([]);
-    requireCompanyRole(user, company_id, ['owner', 'accountant']);
+    await requireCompanyRole(user, company_id, ['owner', 'accountant']);
   }
 
   const rows = await prisma.subscription.findMany({ where, orderBy: { createdAt: 'desc' } });
@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
   const data = upsertSchema.parse(req.body);
   if (!data.company_id) throw new HttpError(400, 'company_id required');
   if (!data.plan) throw new HttpError(400, 'plan required');
-  if (!isAdmin(user)) requireCompanyRole(user, data.company_id, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, data.company_id, ['owner', 'manager']);
 
   const created = await prisma.subscription.create({
     data: {
@@ -84,7 +84,7 @@ router.patch('/:id', async (req, res) => {
   const sub = await prisma.subscription.findUnique({ where: { id: req.params.id } });
   if (!sub) throw new HttpError(404, 'Subscription not found');
 
-  if (!isAdmin(user)) requireCompanyRole(user, sub.companyId, ['owner']);
+  if (!isAdmin(user)) await requireCompanyRole(user, sub.companyId, ['owner']);
 
   const data = upsertSchema.partial().parse(req.body);
   const updated = await prisma.subscription.update({

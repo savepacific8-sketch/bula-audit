@@ -11,6 +11,7 @@ import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { Camera, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
+import { formatApiError } from '@/lib/apiErrors';
 
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
@@ -73,7 +74,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         setStep('review');
       }
     } catch (err) {
-      toast.error('Failed to upload photo');
+      toast.error(formatApiError(err, 'Failed to upload photo'));
       setStep('upload');
     } finally {
       setUploading(false);
@@ -119,7 +120,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
       onSuccess();
       handleClose();
     } catch (err) {
-      toast.error('Failed to save receipt');
+      toast.error(formatApiError(err, 'Failed to save receipt'));
     } finally {
       setSaving(false);
     }

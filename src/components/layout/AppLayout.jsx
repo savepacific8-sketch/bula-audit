@@ -101,7 +101,8 @@ function Sidebar({ filteredNav, filteredAccount, company, canUpload, user, onNav
           </div>
         )}
         <button
-          onClick={onLogout}
+          type="button"
+          onClick={() => onLogout()}
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/55 hover:bg-white/8 hover:text-white w-full transition-all"
         >
@@ -137,13 +138,18 @@ function NavLink({ item, active, onNavigate }) {
 function EmailVerifyBanner({ user }) {
   const [resending, setResending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [devVerifyUrl, setDevVerifyUrl] = useState(null);
   if (!user || user.email_verified !== false) return null;
+
+  const consoleMode = user.email_delivery === 'console';
 
   const resend = async () => {
     setResending(true);
+    setDevVerifyUrl(null);
     try {
-      await base44.auth.resendVerification();
+      const result = await base44.auth.resendVerification();
       setSent(true);
+      if (result?.verify_url) setDevVerifyUrl(result.verify_url);
     } catch {
       // silent — user can retry
     } finally {
@@ -157,16 +163,32 @@ function EmailVerifyBanner({ user }) {
       <div className="flex-1 min-w-0 text-xs">
         <p className="font-semibold text-amber-900">Verify your email</p>
         <p className="text-amber-800 mt-0.5">
-          {sent
-            ? 'Check your inbox for the verification link.'
-            : 'We sent a link to ' + user.email + '. Click it to confirm.'}
+          {consoleMode && !sent && (
+            <>Local dev: emails are not sent to your inbox. Click <strong>Resend</strong> to get a verification link here.</>
+          )}
+          {consoleMode && sent && !devVerifyUrl && (
+            <>Check the <strong>server terminal</strong> (where <code className="text-[10px]">npm run dev</code> runs) for a line starting with <code className="text-[10px]">[verify-email] link</code>.</>
+          )}
+          {!consoleMode && sent && 'Check your inbox (and spam) for the verification link.'}
+          {!consoleMode && !sent && `We sent a link to ${user.email}. Click it to confirm.`}
         </p>
+        {devVerifyUrl && (
+          <p className="mt-2">
+            <a href={devVerifyUrl} className="text-amber-900 font-medium underline break-all">
+              Click here to verify your email
+            </a>
+          </p>
+        )}
       </div>
-      {!sent && (
-        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0 border-amber-300 text-amber-900 hover:bg-amber-100" onClick={resend} disabled={resending}>
-          {resending ? 'Sending...' : 'Resend'}
-        </Button>
-      )}
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs shrink-0 border-amber-300 text-amber-900 hover:bg-amber-100"
+        onClick={resend}
+        disabled={resending}
+      >
+        {resending ? 'Sending...' : sent ? 'Resend again' : 'Resend'}
+      </Button>
     </div>
   );
 }
@@ -220,7 +242,7 @@ export default function AppLayout() {
           canUpload={canUpload}
           user={user}
           onNavigate={() => {}}
-          onLogout={logout}
+          onLogout={() => logout()}
         />
       </aside>
 

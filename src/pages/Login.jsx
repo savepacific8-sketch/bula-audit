@@ -20,7 +20,13 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
-  const from = new URLSearchParams(location.search).get('from') || '/';
+  const fromRaw = new URLSearchParams(location.search).get('from') || '/';
+  const from =
+    typeof fromRaw === 'string' &&
+    fromRaw.startsWith('/') &&
+    !fromRaw.includes('[object')
+      ? fromRaw
+      : '/';
 
   useEffect(() => {
     if (isAuthenticated) navigate(from, { replace: true });

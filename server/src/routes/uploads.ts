@@ -26,9 +26,17 @@ const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024, files: 1 },
+  // Accept broad types here; magic-byte check below is the real gate (Windows/mobile
+  // often send application/octet-stream or a wrong image/* label).
   fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_MIME.has(file.mimetype)) {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    const mime = file.mimetype?.toLowerCase() ?? '';
+    const ok =
+      ALLOWED_MIME.has(mime) ||
+      mime === 'application/octet-stream' ||
+      mime.startsWith('image/') ||
+      mime === 'application/pdf';
+    if (!ok) {
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Use JPEG, PNG, WEBP, HEIC, or PDF.`));
       return;
     }
     cb(null, true);
@@ -44,10 +52,17 @@ router.post('/', upload.single('file'), async (req, res) => {
   if (!ALLOWED_EXT.has(detected.ext) || !ALLOWED_MIME.has(detected.mime)) {
     throw new HttpError(400, `File content (${detected.mime}) does not match allowed types`);
   }
-  const claimedFamily = req.file.mimetype.split('/')[0];
-  const detectedFamily = detected.mime.split('/')[0];
-  if (claimedFamily !== detectedFamily) {
-    throw new HttpError(400, 'File type mismatch');
+  const claimedMime = req.file.mimetype?.toLowerCase() ?? '';
+  if (
+    claimedMime !== 'application/octet-stream' &&
+    !claimedMime.startsWith('image/') &&
+    claimedMime !== 'application/pdf'
+  ) {
+    const claimedFamily = claimedMime.split('/')[0];
+    const detectedFamily = detected.mime.split('/')[0];
+    if (claimedFamily !== detectedFamily) {
+      throw new HttpError(400, 'File type mismatch');
+    }
   }
 
   const key = `receipts/${randomBytes(16).toString('hex')}.${detected.ext}`;

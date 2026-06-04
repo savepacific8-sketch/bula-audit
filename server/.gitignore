@@ -4,3 +4,6 @@ dist
 .env.local
 uploads
 *.log
+*.db
+dev.db
+prisma/dev.db

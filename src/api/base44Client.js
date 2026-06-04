@@ -168,8 +168,10 @@ export const base44 = {
       if (result?.refresh_token) setRefreshToken(result.refresh_token);
       return result?.user;
     },
-    signup: async (email, password, full_name) => {
-      const result = await request('POST', '/auth/signup', { email, password, full_name });
+    signup: async (email, password, full_name, turnstile_token) => {
+      const body = { email, password, full_name };
+      if (turnstile_token) body.turnstile_token = turnstile_token;
+      const result = await request('POST', '/auth/signup', body);
       if (result?.token) setToken(result.token);
       if (result?.refresh_token) setRefreshToken(result.refresh_token);
       return result?.user;
@@ -178,7 +180,10 @@ export const base44 = {
       const refresh = getRefreshToken();
       try { await request('POST', '/auth/logout', { refresh_token: refresh }); } catch { /* ignore */ }
       clearAllTokens();
-      const target = redirectUrl || '/login';
+      const target =
+        typeof redirectUrl === 'string' && redirectUrl.startsWith('/')
+          ? redirectUrl
+          : '/login';
       try { window.location.href = target; } catch { /* ignore */ }
     },
     logoutEverywhere: async () => {
@@ -196,8 +201,11 @@ export const base44 = {
     },
     googleStatus: () => request('GET', '/auth/google/status'),
 
-    requestPasswordReset: (email) =>
-      request('POST', '/auth/password-reset/request', { email }),
+    requestPasswordReset: (email, turnstile_token) => {
+      const body = { email };
+      if (turnstile_token) body.turnstile_token = turnstile_token;
+      return request('POST', '/auth/password-reset/request', body);
+    },
     confirmPasswordReset: (token, password) =>
       request('POST', '/auth/password-reset/confirm', { token, password }),
 

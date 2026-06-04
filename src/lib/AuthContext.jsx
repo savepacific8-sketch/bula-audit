@@ -80,8 +80,8 @@ export const AuthProvider = ({ children }) => {
     return u;
   }, []);
 
-  const signup = useCallback(async (email, password, fullName) => {
-    const u = await base44.auth.signup(email, password, fullName);
+  const signup = useCallback(async (email, password, fullName, turnstileToken) => {
+    const u = await base44.auth.signup(email, password, fullName, turnstileToken);
     setUser(u);
     setIsAuthenticated(true);
     setAuthError(null);
@@ -89,10 +89,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async (redirectUrl) => {
+    const target =
+      typeof redirectUrl === 'string' && redirectUrl.startsWith('/')
+        ? redirectUrl
+        : '/login';
     clearAllTokens();
     setUser(null);
     setIsAuthenticated(false);
-    try { await base44.auth.logout(redirectUrl); } catch { /* ignore */ }
+    try { await base44.auth.logout(target); } catch { /* ignore */ }
   }, []);
 
   const logoutEverywhere = useCallback(async () => {

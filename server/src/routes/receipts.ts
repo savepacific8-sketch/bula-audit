@@ -5,7 +5,7 @@ import { prisma } from '../prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/error.js';
 import { isAdmin, requireCompanyRole } from '../lib/permissions.js';
-import { serializeReceipt } from '../lib/serializers.js';
+import { serializeReceiptForApi } from '../lib/mediaUrls.js';
 import { audit } from '../lib/audit.js';
 
 const router = Router();
@@ -107,7 +107,7 @@ router.get('/', async (req, res) => {
     where,
     orderBy: { createdAt: 'desc' },
   });
-  res.json(rows.map(serializeReceipt));
+  res.json(await Promise.all(rows.map((r) => serializeReceiptForApi(r))));
 });
 
 router.get('/:id', async (req, res) => {
@@ -117,12 +117,12 @@ router.get('/:id', async (req, res) => {
   // Hide soft-deleted from non-admins
   if (receipt.deletedAt && !isAdmin(user)) throw new HttpError(404, 'Receipt not found');
   if (!isAdmin(user)) {
-    requireCompanyRole(user, receipt.companyId, ['owner', 'manager', 'accountant', 'staff']);
+    await requireCompanyRole(user, receipt.companyId, ['owner', 'manager', 'accountant', 'staff']);
     if (user.currentCompanyRole === 'staff' && receipt.uploadedBy !== user.email) {
       throw new HttpError(403, 'Staff can only view their own receipts');
     }
   }
-  res.json(serializeReceipt(receipt));
+  res.json(await serializeReceiptForApi(receipt));
 });
 
 router.post('/', async (req, res) => {
@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
   if (!data.company_id) throw new HttpError(400, 'company_id required');
   if (!data.photo_url) throw new HttpError(400, 'photo_url required');
   if (!isAdmin(user)) {
-    requireCompanyRole(user, data.company_id, ['owner', 'manager', 'staff']);
+    await requireCompanyRole(user, data.company_id, ['owner', 'manager', 'staff']);
   }
 
   const created = await prisma.receipt.create({
@@ -171,7 +171,7 @@ router.post('/', async (req, res) => {
     companyId: created.companyId,
     metadata: { supplier: data.supplier_name, total: data.total_amount },
   });
-  res.status(201).json(serializeReceipt(created));
+  res.status(201).json(await serializeReceiptForApi(created));
 });
 
 router.patch('/:id', async (req, res) => {
@@ -180,7 +180,7 @@ router.patch('/:id', async (req, res) => {
   if (!receipt) throw new HttpError(404, 'Receipt not found');
 
   if (!isAdmin(user)) {
-    requireCompanyRole(user, receipt.companyId, ['owner', 'manager', 'staff']);
+    await requireCompanyRole(user, receipt.companyId, ['owner', 'manager', 'staff']);
     if (user.currentCompanyRole === 'staff' && receipt.uploadedBy !== user.email) {
       throw new HttpError(403, 'Staff can only edit their own receipts');
     }
@@ -248,7 +248,7 @@ router.patch('/:id', async (req, res) => {
       companyId: receipt.companyId,
     });
   }
-  res.json(serializeReceipt(updated));
+  res.json(await serializeReceiptForApi(updated));
 });
 
 // Soft delete by default (FRCS-style retention). Admin can force-purge
@@ -258,7 +258,7 @@ router.delete('/:id', async (req, res) => {
   const user = req.user!;
   const receipt = await prisma.receipt.findUnique({ where: { id: req.params.id } });
   if (!receipt) throw new HttpError(404, 'Receipt not found');
-  if (!isAdmin(user)) requireCompanyRole(user, receipt.companyId, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, receipt.companyId, ['owner', 'manager']);
 
   const permanent = isAdmin(user) && req.query.permanent === 'true';
   if (permanent) {

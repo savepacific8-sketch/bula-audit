@@ -1,2 +1,4 @@
+# Railway/Nixpacks: Node 22 (Prisma in server/ needs 20.19+; avoid old nodejs_20 from nix).
 [phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
+nixPkgs = ["nodejs_22", "openssl"]
+nixpkgsArchive = "51ad838b03a05b1de6f9f2a0fffecee64a9788ee"

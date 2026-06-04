@@ -48,7 +48,7 @@ const createSchema = z.object({
 router.post('/', async (req, res) => {
   const user = req.user!;
   const data = createSchema.parse(req.body);
-  if (!isAdmin(user)) requireCompanyRole(user, data.company_id, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, data.company_id, ['owner', 'manager']);
 
   const created = await prisma.teamMember.upsert({
     where: {
@@ -83,7 +83,7 @@ router.patch('/:id', async (req, res) => {
   const user = req.user!;
   const member = await prisma.teamMember.findUnique({ where: { id: req.params.id } });
   if (!member) throw new HttpError(404, 'TeamMember not found');
-  if (!isAdmin(user)) requireCompanyRole(user, member.companyId, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, member.companyId, ['owner', 'manager']);
 
   const data = updateSchema.parse(req.body);
   const updated = await prisma.teamMember.update({
@@ -102,7 +102,7 @@ router.delete('/:id', async (req, res) => {
   const member = await prisma.teamMember.findUnique({ where: { id: req.params.id } });
   if (!member) throw new HttpError(404, 'TeamMember not found');
   if (!isAdmin(user)) {
-    requireCompanyRole(user, member.companyId, ['owner', 'manager']);
+    await requireCompanyRole(user, member.companyId, ['owner', 'manager']);
     if (member.userEmail === user.email) {
       throw new HttpError(400, 'Cannot remove yourself');
     }

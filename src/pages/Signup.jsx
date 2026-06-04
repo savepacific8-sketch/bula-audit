@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { formatApiError } from '@/lib/apiErrors';
+
+const TURNSTILE_ENABLED = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -15,6 +19,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState(null);
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true });
@@ -27,12 +32,16 @@ export default function Signup() {
       setError('Password must be at least 8 characters');
       return;
     }
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the security check below.');
+      return;
+    }
     setLoading(true);
     try {
-      await signup(email.trim(), password, fullName.trim() || undefined);
+      await signup(email.trim(), password, fullName.trim() || undefined, turnstileToken);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err?.message || 'Sign-up failed');
+      setError(formatApiError(err, 'Sign-up failed'));
     } finally {
       setLoading(false);
     }
@@ -94,12 +103,24 @@ export default function Signup() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              placeholder="8+ chars, letter and number"
               disabled={loading}
             />
+            <p className="text-[11px] text-muted-foreground">
+              At least 8 characters, include a letter and a number, no spaces. Avoid common passwords like password123.
+            </p>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <TurnstileWidget
+            onToken={setTurnstileToken}
+            onError={(msg) => setError(msg)}
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || (TURNSTILE_ENABLED && !turnstileToken)}
+          >
             {loading ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
             ) : (

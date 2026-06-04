@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const user = req.user!;
   const data = createSchema.parse(req.body);
-  if (!isAdmin(user)) requireCompanyRole(user, data.company_id, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, data.company_id, ['owner', 'manager']);
 
   const created = await prisma.paymentProof.create({
     data: {
@@ -86,7 +86,7 @@ router.patch('/:id', async (req, res) => {
   const user = req.user!;
   const proof = await prisma.paymentProof.findUnique({ where: { id: req.params.id } });
   if (!proof) throw new HttpError(404, 'PaymentProof not found');
-  if (!isAdmin(user)) requireCompanyRole(user, proof.companyId, ['owner', 'manager']);
+  if (!isAdmin(user)) await requireCompanyRole(user, proof.companyId, ['owner', 'manager']);
 
   const data = updateSchema.parse(req.body);
   const updated = await prisma.paymentProof.update({

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
+import { formatApiError } from '@/lib/apiErrors';
 
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
@@ -91,8 +92,8 @@ function UploadReceiptInner() {
       // Upload the original file without resizing or compression
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
-    } catch {
-      toast.error('Failed to upload photo. Please try again.');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to upload photo. Please try again.'));
       setStep('capture');
     } finally {
       setUploading(false);
@@ -235,8 +236,8 @@ function UploadReceiptInner() {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setDocumentUrl(file_url);
       toast.success('Document attached!');
-    } catch {
-      toast.error('Failed to upload document. Please try again.');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to upload document. Please try again.'));
       setDocumentName('');
     } finally {
       setDocumentUploading(false);

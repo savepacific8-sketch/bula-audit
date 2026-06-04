@@ -176,15 +176,23 @@ function ProfileSection({ user, onUpdated }) {
 function EmailVerificationSection({ user }) {
   const [resending, setResending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [devVerifyUrl, setDevVerifyUrl] = useState(null);
   if (!user) return null;
   const verified = user.email_verified !== false;
+  const consoleMode = user.email_delivery === 'console';
 
   const resend = async () => {
     setResending(true);
+    setDevVerifyUrl(null);
     try {
-      await base44.auth.resendVerification();
+      const result = await base44.auth.resendVerification();
       setSent(true);
-      toast.success('Verification email sent');
+      if (result?.verify_url) {
+        setDevVerifyUrl(result.verify_url);
+        toast.success('Verification link ready (local dev)');
+      } else {
+        toast.success('Verification email sent — check your inbox');
+      }
     } catch (err) {
       toast.error(err?.message || 'Could not send email');
     } finally { setResending(false); }
@@ -204,16 +212,23 @@ function EmailVerificationSection({ user }) {
             <p className="text-xs text-muted-foreground mt-0.5">
               {verified
                 ? 'Your email address is confirmed.'
-                : sent
-                  ? 'Verification email sent. Check your inbox.'
-                  : `We sent a link to ${user.email}. Resend if you didn't get it.`}
+                : consoleMode
+                  ? 'Local dev: emails are not sent. Use Resend to get a link below.'
+                  : sent
+                    ? 'Check your inbox and spam folder.'
+                    : `We sent a link to ${user.email}. Resend if you didn't get it.`}
             </p>
+            {devVerifyUrl && (
+              <a href={devVerifyUrl} className="text-xs text-primary font-medium underline break-all mt-1 inline-block">
+                Click here to verify your email
+              </a>
+            )}
           </div>
         </div>
-        {!verified && !sent && (
+        {!verified && (
           <Button size="sm" variant="outline" onClick={resend} disabled={resending}>
             {resending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
-            Resend
+            {sent ? 'Resend again' : 'Resend'}
           </Button>
         )}
       </div>

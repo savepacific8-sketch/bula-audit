@@ -23,6 +23,7 @@ import { signTwoFaChallenge, verifyTwoFaChallenge } from './twofa.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/error.js';
 import { authLimiter } from '../middleware/rateLimit.js';
+import { verifyTurnstileToken } from '../lib/turnstile.js';
 
 const router = Router();
 
@@ -63,6 +64,8 @@ function publicUser(user: {
     avatar_url: user.avatarUrl,
     role: user.role,
     email_verified: user.emailVerified,
+    /** inbox = real email (Resend); console = link only in server logs / dev UI */
+    email_delivery: isEmailConfigured ? 'inbox' : 'console',
     data: {
       current_company_id: user.currentCompanyId,
       current_company_role: user.currentCompanyRole,
@@ -92,10 +95,12 @@ const signupSchema = z.object({
   email: z.string().email().max(255).toLowerCase(),
   password: passwordSchema,
   full_name: z.string().min(1).max(120).optional(),
+  turnstile_token: z.string().nullish(),
 });
 
 router.post('/signup', authLimiter, async (req, res) => {
-  const { email, password, full_name } = signupSchema.parse(req.body);
+  const { email, password, full_name, turnstile_token } = signupSchema.parse(req.body);
+  await verifyTurnstileToken(turnstile_token, req.ip);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     await audit(req, { action: 'auth.signup', entity: 'User', metadata: { email, exists: true } });
@@ -420,7 +425,15 @@ router.post('/verify-email/resend', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[verify-email:resend] failed:', err);
   }
-  res.json({ ok: true });
+  const payload: Record<string, unknown> = {
+    ok: true,
+    email_delivery: isEmailConfigured ? 'inbox' : 'console',
+  };
+  // Local dev only: return link in API so you don't have to hunt terminal logs
+  if (env.NODE_ENV !== 'production' && !isEmailConfigured) {
+    payload.verify_url = verifyUrl;
+  }
+  res.json(payload);
 });
 
 const verifyConfirmSchema = z.object({ token: z.string().min(32) });
@@ -495,11 +508,15 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 const resetRequestSchema = z.object({
   email: z.string().email().toLowerCase(),
+  turnstile_token: z.string().nullish(),
 });
 
 router.post('/password-reset/request', authLimiter, async (req, res) => {
-  const { email } = resetRequestSchema.parse(req.body);
+  const { email, turnstile_token } = resetRequestSchema.parse(req.body);
+  await verifyTurnstileToken(turnstile_token, req.ip);
   const user = await prisma.user.findUnique({ where: { email } });
+  let devResetUrl: string | undefined;
+
   if (user) {
     const raw = randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
@@ -509,6 +526,9 @@ router.post('/password-reset/request', authLimiter, async (req, res) => {
     });
 
     const resetUrl = `${env.CLIENT_ORIGIN}/reset-password?token=${raw}`;
+    if (env.NODE_ENV !== 'production' && !isEmailConfigured) {
+      devResetUrl = resetUrl;
+    }
     try {
       const tpl = passwordResetEmail(resetUrl, RESET_TOKEN_TTL_MINUTES);
       await sendEmail({ to: email, ...tpl });
@@ -528,7 +548,14 @@ router.post('/password-reset/request', authLimiter, async (req, res) => {
       metadata: { email, exists: false },
     });
   }
-  res.json({ ok: true, message: 'If that email is registered, a reset link has been sent.' });
+
+  const payload: Record<string, unknown> = {
+    ok: true,
+    message: 'If that email is registered, a reset link has been sent.',
+    email_delivery: isEmailConfigured ? 'inbox' : 'console',
+  };
+  if (devResetUrl) payload.reset_url = devResetUrl;
+  res.json(payload);
 });
 
 const resetConfirmSchema = z.object({

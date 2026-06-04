@@ -3,6 +3,9 @@
 // rejection is forwarded to the error middleware as if it were next(err).
 import 'express-async-errors';
 
+import { initSentry } from './lib/sentry.js';
+await initSentry();
+
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -42,11 +45,12 @@ app.use(
       ? {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
             styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind needs inline at runtime
             imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
             fontSrc: ["'self'", 'data:'],
-            connectSrc: ["'self'", 'https://api.openai.com'],
+            frameSrc: ["'self'", 'https://challenges.cloudflare.com'],
+            connectSrc: ["'self'", 'https://api.openai.com', 'https://challenges.cloudflare.com'],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],

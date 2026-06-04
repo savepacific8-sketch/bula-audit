@@ -46,6 +46,12 @@ const schema = z.object({
 
   // App identity (used in emails + OAuth callbacks)
   APP_NAME: z.string().default('BULA AUDIT'),
+
+  // Cloudflare Turnstile (optional — when set, signup + password-reset require CAPTCHA)
+  TURNSTILE_SECRET_KEY: z.string().default(''),
+
+  // Sentry error tracking (optional)
+  SENTRY_DSN: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -92,13 +98,18 @@ if (env.NODE_ENV === 'production') {
     if (!env.S3_SECRET_ACCESS_KEY) fatal.push('S3_SECRET_ACCESS_KEY is required when STORAGE_DRIVER=s3.');
   }
   if (env.EMAIL_DRIVER === 'console') {
-    warn.push('EMAIL_DRIVER=console will not send real emails. Verification/reset links will print to server logs. Switch to resend before public launch.');
+    fatal.push(
+      'EMAIL_DRIVER must be resend in production so all users receive verification and password-reset emails.',
+    );
   }
   if (env.EMAIL_DRIVER === 'resend' && !env.RESEND_API_KEY) {
     fatal.push('RESEND_API_KEY is required when EMAIL_DRIVER=resend.');
   }
   if (env.GOOGLE_REDIRECT_URI.startsWith('http://localhost') && env.GOOGLE_CLIENT_ID) {
     warn.push('GOOGLE_REDIRECT_URI points to localhost but GOOGLE_CLIENT_ID is set. Update to your prod callback URL.');
+  }
+  if (!env.TURNSTILE_SECRET_KEY) {
+    warn.push('TURNSTILE_SECRET_KEY not set — signup and password reset are not CAPTCHA-protected.');
   }
 
   if (warn.length) {
