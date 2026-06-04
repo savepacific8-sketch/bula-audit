@@ -14,3 +14,6 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
+
+[deploy.variables]
+RAILPACK_NODE_VERSION = "22"
