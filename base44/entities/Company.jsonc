@@ -1,0 +1,130 @@
+{
+  "name": "Company",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "tin": {
+      "type": "string",
+      "description": "Tax Identification Number"
+    },
+    "business_type": {
+      "type": "string",
+      "enum": [
+        "sole_trader",
+        "partnership",
+        "limited_company",
+        "cooperative",
+        "ngo",
+        "government",
+        "other"
+      ],
+      "description": "Type of business entity"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Business email"
+    },
+    "address": {
+      "type": "string",
+      "description": "Business address"
+    },
+    "vat_registered": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the company is VAT registered"
+    },
+    "vat_rate": {
+      "type": "number",
+      "default": 12.5,
+      "description": "Default VAT rate percentage"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email of the company owner"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description of the company"
+    }
+  },
+  "required": [
+    "name",
+    "owner_email"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "id": "{{user.data.current_company_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "id": "{{user.data.current_company_id}}"
+            },
+            {
+              "user.data.current_company_role": {
+                "$in": [
+                  "owner",
+                  "manager"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
+}
