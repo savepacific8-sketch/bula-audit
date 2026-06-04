@@ -149,33 +149,9 @@ export default function Signup() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => base44.auth.loginWithProvider('google', '/')}
+              onClick={() => { window.location.href = base44.auth.getGoogleLoginUrl(window.location.origin + '/'); }}
             >
               Continue with Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('microsoft', '/')}
-            >
-              Continue with Microsoft
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('facebook', '/')}
-            >
-              Continue with Facebook
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('apple', '/')}
-            >
-              Continue with Apple
             </Button>
           </div>
         </form>

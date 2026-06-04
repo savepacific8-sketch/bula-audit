@@ -11,7 +11,7 @@ import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, checkUserAuth } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -35,13 +35,12 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const result = await base44.auth.login(email.trim(), password);
+      const result = await login(email.trim(), password);
       if (result?.requires2fa) {
         setChallengeToken(result.challengeToken);
         return;
       }
-      await checkUserAuth();
-      navigate(from, { replace: true });
+      window.location.href = from;
     } catch (err) {
       setError(err?.message || 'Invalid credentials');
     } finally {
@@ -55,8 +54,7 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.loginWithTwoFa(challengeToken, code.trim());
-      await checkUserAuth();
-      navigate(from, { replace: true });
+      window.location.href = from;
     } catch (err) {
       setError(err?.message || 'Invalid code');
     } finally {
@@ -200,33 +198,9 @@ export default function Login() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => base44.auth.loginWithProvider('google', window.location.origin + from)}
+              onClick={() => { window.location.href = base44.auth.getGoogleLoginUrl(window.location.origin + from); }}
             >
               Continue with Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('microsoft', window.location.origin + from)}
-            >
-              Continue with Microsoft
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('facebook', window.location.origin + from)}
-            >
-              Continue with Facebook
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => base44.auth.loginWithProvider('apple', window.location.origin + from)}
-            >
-              Continue with Apple
             </Button>
           </div>
         </form>
