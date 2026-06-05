@@ -12,7 +12,7 @@ export function isTurnstileConfigured(): boolean {
  * When TURNSTILE_SECRET_KEY is unset, verification is skipped (dev / soft launch).
  */
 export async function verifyTurnstileToken(
-  token: string | undefined,
+  token: string | null | undefined,
   remoteIp?: string,
 ): Promise<void> {
   if (!isTurnstileConfigured()) return;

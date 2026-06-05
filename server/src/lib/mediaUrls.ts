@@ -50,7 +50,11 @@ export async function withResolvedReceiptMedia(
   return {
     ...receipt,
     photo_url: photo_url ?? receipt.photo_url,
+<<<<<<< HEAD
     document_url: document_url ?? receipt.document_url,
+=======
+    document_url: document_url !== null ? document_url : receipt.document_url,
+>>>>>>> c60f239 (Fix server TypeScript build for Railway deploy)
   };
 }
 
