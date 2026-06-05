@@ -100,7 +100,7 @@ const signupSchema = z.object({
 
 router.post('/signup', authLimiter, async (req, res) => {
   const { email, password, full_name, turnstile_token } = signupSchema.parse(req.body);
-  await verifyTurnstileToken(turnstile_token, req.ip);
+  await verifyTurnstileToken(turnstile_token, req.ip ?? undefined);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     await audit(req, { action: 'auth.signup', entity: 'User', metadata: { email, exists: true } });
@@ -513,7 +513,7 @@ const resetRequestSchema = z.object({
 
 router.post('/password-reset/request', authLimiter, async (req, res) => {
   const { email, turnstile_token } = resetRequestSchema.parse(req.body);
-  await verifyTurnstileToken(turnstile_token, req.ip);
+  await verifyTurnstileToken(turnstile_token, req.ip ?? undefined);
   const user = await prisma.user.findUnique({ where: { email } });
   let devResetUrl: string | undefined;
 
