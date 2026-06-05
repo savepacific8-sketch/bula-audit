@@ -6,7 +6,8 @@
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build && cd server && npm install && npx prisma generate && npm run build"
+# Dummy DATABASE_URL only for prisma generate at build time (no DB connection needed).
+buildCommand = "npm install && npm run build && cd server && npm install && DATABASE_URL=mysql://build:build@127.0.0.1:3306/build npx prisma generate && npm run build"
 
 [deploy]
 startCommand = "cd server && npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"
