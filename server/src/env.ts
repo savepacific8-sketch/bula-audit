@@ -100,8 +100,8 @@ if (env.NODE_ENV === 'production') {
     if (!env.S3_SECRET_ACCESS_KEY) fatal.push('S3_SECRET_ACCESS_KEY is required when STORAGE_DRIVER=s3.');
   }
   if (env.EMAIL_DRIVER === 'console') {
-    fatal.push(
-      'EMAIL_DRIVER must be resend in production so all users receive verification and password-reset emails.',
+    warn.push(
+      'EMAIL_DRIVER=console — verification/reset links print in deploy logs only. Set EMAIL_DRIVER=resend + RESEND_API_KEY for real email.',
     );
   }
   if (env.EMAIL_DRIVER === 'resend' && !env.RESEND_API_KEY) {
