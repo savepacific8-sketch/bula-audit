@@ -47,7 +47,11 @@ export async function withResolvedReceiptMedia(
     resolveMediaUrl(receipt.photo_url),
     resolveMediaUrl(receipt.document_url),
   ]);
-  return { ...receipt, photo_url, document_url };
+  return {
+    ...receipt,
+    photo_url: photo_url ?? receipt.photo_url,
+    document_url: document_url ?? receipt.document_url,
+  };
 }
 
 export async function serializeReceiptForApi(r: Receipt): Promise<SerializedReceipt> {
