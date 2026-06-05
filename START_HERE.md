@@ -81,6 +81,34 @@ Wait for: `Local: http://localhost:5173/` (or 5174/5175 if 5173 is busy — use 
 - Login: http://localhost:5173/login  
 - Sign up: http://localhost:5173/signup  
 
+### Use on your phone (same Wi‑Fi as your laptop)
+
+1. Start backend + frontend (both windows above). Vite prints a **Network** URL, e.g. `http://192.168.1.42:5173/`.
+2. On your phone browser, open that **Network** URL (not `localhost`).
+3. Log in with the same account. **Receipts → Upload → Take photo (camera)** scans receipts (free OCR).
+4. If the phone cannot connect: allow Node/Vite through Windows Firewall; phone and PC must be on the same Wi‑Fi.
+
+To find your PC IP manually:
+
+```powershell
+ipconfig
+```
+
+Look for **IPv4 Address** under Wi‑Fi (e.g. `192.168.1.42`), then open `http://THAT-IP:5173`.
+
+### Share with managers (present to superiors)
+
+**Full guide:** `SHARE_ON_MOBILE.md` (HTTPS link, tunnel, QR, Add to Home Screen).
+
+| Situation | Link to share | Notes |
+|-----------|---------------|--------|
+| **Live on Railway** | `https://YOUR-APP.up.railway.app` | Best for managers — one permanent link. Set `CLIENT_ORIGIN` to this URL, redeploy. |
+| **Temporary HTTPS link** | `https://….trycloudflare.com` | Run `scripts\share-tunnel.ps1` while dev is running; send link by WhatsApp/SMS. URL changes each restart. |
+| **Same Wi‑Fi only** | Vite **Network** URL (`http://192.168.x.x:5173`) | No install; phone must be on your Wi‑Fi. |
+| **Managers / staff** | Same URL + their own login | **Team** → add email as **Manager** → they **Sign up** at that link with that email. |
+
+**For presentations:** approve receipts first (totals/VAT cards are **approved only**). Category and trend charts include **pending** uploads too. Receipts with no date use **upload date** on charts.
+
 ### If something fails
 
 | Problem | Fix |
@@ -93,6 +121,8 @@ Wait for: `Local: http://localhost:5173/` (or 5174/5175 if 5173 is busy — use 
 ---
 
 ## Part 3 — Railway + MySQL (live app on the internet)
+
+**Database on Railway:** see **`RAILWAY_MYSQL.md`** (connect MySQL plugin, optional copy of local data).
 
 ### A. GitHub → Railway can see your repo
 

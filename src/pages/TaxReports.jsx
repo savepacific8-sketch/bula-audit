@@ -15,6 +15,7 @@ import { Download, FileText, Shield, AlertTriangle, CheckCircle2, Filter } from 
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import PageHeader from '@/components/layout/PageHeader';
+import { isReceiptInRange } from '@/lib/receiptDates';
 
 const CATEGORIES = [
   'office_supplies','utilities','rent','transport','food_beverage','equipment',
@@ -26,9 +27,7 @@ const CATEGORIES = [
 const VAT_CREDIT_TYPES = ['inclusive', 'exclusive'];
 
 function inRange(r, from, to) {
-  if (!r.receipt_date) return false;
-  const d = new Date(r.receipt_date);
-  return d >= from && d <= to;
+  return isReceiptInRange(r, from, to);
 }
 
 function downloadCSV(rows, filename) {

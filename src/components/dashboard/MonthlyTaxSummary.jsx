@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatFJD, formatCategory } from '@/lib/formatCurrency';
 import { FileText, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { isReceiptInInterval, isChartableReceipt } from '@/lib/receiptDates';
 
 const CATEGORY_BUDGETS = {
   office_supplies: 500,
@@ -32,20 +33,20 @@ export default function MonthlyTaxSummary({ receipts }) {
   const now = new Date();
   const monthLabel = format(now, 'MMMM yyyy');
 
-  const monthReceipts = useMemo(() => {
-    return receipts.filter(r => {
-      if (!r.receipt_date) return false;
-      const d = new Date(r.receipt_date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-  }, [receipts]);
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
 
+  const monthReceipts = useMemo(
+    () => receipts.filter(r => isReceiptInInterval(r, monthStart, monthEnd)),
+    [receipts, monthStart, monthEnd],
+  );
+
+  const chartMonth = useMemo(() => monthReceipts.filter(isChartableReceipt), [monthReceipts]);
   const approvedMonth = useMemo(() => monthReceipts.filter(r => r.status === 'approved'), [monthReceipts]);
 
-  // Aggregate by category
   const byCategory = useMemo(() => {
     const map = {};
-    approvedMonth.forEach(r => {
+    chartMonth.forEach(r => {
       const cat = r.category || 'other';
       if (!map[cat]) map[cat] = { total: 0, vat: 0, count: 0 };
       map[cat].total += r.total_amount || 0;
@@ -53,7 +54,7 @@ export default function MonthlyTaxSummary({ receipts }) {
       map[cat].count += 1;
     });
     return map;
-  }, [approvedMonth]);
+  }, [chartMonth]);
 
   const totalExpenses = approvedMonth.reduce((s, r) => s + (r.total_amount || 0), 0);
   const totalVAT = approvedMonth.reduce((s, r) => s + (r.vat_amount || 0), 0);

@@ -19,6 +19,8 @@ const schema = z.object({
 
   OPENAI_API_KEY: z.string().default(''),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  /** ocr = free Tesseract (default). openai = paid vision API (needs OPENAI_API_KEY). */
+  RECEIPT_SCAN_DRIVER: z.enum(['ocr', 'openai']).default('ocr'),
 
   // ── File storage ──────────────────────────────────────────────────
   // STORAGE_DRIVER=local  -> writes to UPLOAD_DIR, served at /uploads/*

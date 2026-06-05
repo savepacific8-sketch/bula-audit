@@ -17,6 +17,8 @@ import {
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
 import { formatApiError } from '@/lib/apiErrors';
+import { isPdfFile, isPdfUrl } from '@/lib/receiptMedia';
+import ReceiptMediaPreview from '@/components/receipts/ReceiptMediaPreview';
 
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
@@ -65,33 +67,40 @@ function UploadReceiptInner() {
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!company?.id) {
+      toast.error('No company selected. Finish setup or refresh the page.');
+      return;
+    }
 
     // Check file size — warn if very small (likely low quality)
     if (file.size < 50 * 1024) {
       toast.warning('Image appears very small. For best results, use a higher quality photo.');
     }
 
-    // Load image to check basic dimensions
+    const isPdf =
+      file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
     const objectUrl = URL.createObjectURL(file);
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        if (img.width < 400 || img.height < 400) {
-          toast.warning('Image resolution is low. Try capturing from closer or in better light.');
-        }
-        resolve();
-      };
-      img.onerror = resolve;
-      img.src = objectUrl;
-    });
 
-    setPreviewSrc(objectUrl);
-    setStep('preview');
+    if (!isPdf) {
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.width < 400 || img.height < 400) {
+            toast.warning('Image resolution is low. Try capturing from closer or in better light.');
+          }
+          resolve();
+        };
+        img.onerror = resolve;
+        img.src = objectUrl;
+      });
+    }
+
+    setPreviewSrc(isPdf ? null : objectUrl);
     setUploading(true);
     try {
-      // Upload the original file without resizing or compression
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
+      setStep('preview');
     } catch (err) {
       toast.error(formatApiError(err, 'Failed to upload photo. Please try again.'));
       setStep('capture');
@@ -102,6 +111,11 @@ function UploadReceiptInner() {
 
   const runExtraction = async () => {
     if (!photoUrl) { toast.error('Still uploading, please wait...'); return; }
+    if (isPdfUrl(photoUrl)) {
+      toast.info('AI scan is for photos only. Enter PDF receipt details in the form.');
+      setStep('review');
+      return;
+    }
     setStep('extract');
     setExtracting(true);
     try {
@@ -133,8 +147,8 @@ function UploadReceiptInner() {
       } else {
         toast.success('Receipt data extracted!');
       }
-    } catch {
-      toast.error('Could not auto-extract. Please fill in manually.');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Could not auto-extract. Please fill in manually.'));
     } finally {
       setExtracting(false);
       setStep('review');
@@ -292,13 +306,13 @@ function UploadReceiptInner() {
             <div className="flex items-center justify-center gap-3 bg-primary text-primary-foreground rounded-2xl px-6 py-5 text-base font-semibold shadow-lg hover:bg-primary/90 transition-colors">
               <Camera className="w-6 h-6" /> Use Camera
             </div>
-            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+            <input ref={cameraInputRef} type="file" accept="image/*,application/pdf,.heic,.heif,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif" capture="environment" className="hidden" onChange={handleFile} />
           </label>
           <label className="w-full cursor-pointer">
             <div className="flex items-center justify-center gap-3 bg-secondary text-secondary-foreground rounded-2xl px-6 py-5 text-base font-semibold hover:bg-secondary/80 transition-colors border border-border">
               <ImagePlus className="w-6 h-6" /> Choose from Gallery
             </div>
-            <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+            <input ref={galleryInputRef} type="file" accept="image/*,application/pdf,.heic,.heif,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif" className="hidden" onChange={handleFile} />
           </label>
 
           {/* Divider */}
@@ -408,10 +422,10 @@ function UploadReceiptInner() {
         <h1 className="text-xl font-bold">Review & Save</h1>
       </div>
 
-      {/* Thumbnail */}
-      {previewSrc && (
-        <div className="rounded-xl overflow-hidden border border-border h-28 bg-muted">
-          <img src={previewSrc} alt="Receipt" className="w-full h-full object-contain" />
+      {/* Thumbnail / PDF preview */}
+      {(previewSrc || photoUrl) && (
+        <div className="rounded-xl overflow-hidden border border-border min-h-28 max-h-56 bg-muted">
+          <ReceiptMediaPreview url={previewSrc || photoUrl} className="max-h-56" />
         </div>
       )}
 

@@ -8,10 +8,13 @@ import { MobileSelect } from '@/components/ui/MobileSelect';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
-import { Camera, Upload, Loader2 } from 'lucide-react';
+import { Camera, ImagePlus, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
 import { formatApiError } from '@/lib/apiErrors';
+import { isPdfFile } from '@/lib/receiptMedia';
+import ReceiptMediaPreview from '@/components/receipts/ReceiptMediaPreview';
 
 const CATEGORIES = [
   'office_supplies', 'utilities', 'rent', 'transport', 'food_beverage',
@@ -28,8 +31,10 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [localPreviewUrl, setLocalPreviewUrl] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const [form, setForm] = useState({
     supplier_name: '', supplier_tin: '', receipt_number: '',
     receipt_date: '', currency: 'FJD', subtotal: '', vat_rate: company?.vat_rate || 12.5,
@@ -37,15 +42,39 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     item_lines: [], ai_confidence: null, ai_missing_fields: []
   });
 
+  const normalizeCategory = (cat) => {
+    if (!cat) return '';
+    return CATEGORIES.includes(cat) ? cat : 'other';
+  };
+
+  const normalizePayment = (m) => {
+    if (!m) return '';
+    return PAYMENT_METHODS.includes(m) ? m : 'other';
+  };
+
   const processFile = useCallback(async (file) => {
     if (!file) return;
-    // Reset input so iOS fires onChange again if same photo is reselected
+    if (!company?.id) {
+      toast.error('No company selected. Finish setup or refresh the page.');
+      return;
+    }
     setFileInputKey(k => k + 1);
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    if (!isPdfFile(file)) {
+      setLocalPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setLocalPreviewUrl('');
+    }
     setUploading(true);
     setStep('extract');
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const uploaded = await base44.integrations.Core.UploadFile({ file });
+      const file_url = uploaded?.file_url;
+      if (!file_url) {
+        throw new Error('Upload succeeded but no file URL was returned');
+      }
       setPhotoUrl(file_url);
+
       setExtracting(true);
       try {
         const result = await extractReceiptData(file_url);
@@ -56,25 +85,27 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
           receipt_number:    result.receipt_number   || '',
           receipt_date:      result.receipt_date     || '',
           currency:          result.currency         || 'FJD',
-          subtotal:          result.subtotal         ?? '',
-          vat_rate:          result.vat_rate         ?? company?.vat_rate ?? 12.5,
-          vat_amount:        result.vat_amount       ?? '',
-          total_amount:      result.total_amount     ?? '',
-          payment_method:    result.payment_method   || '',
-          category:          result.category         || '',
-          item_lines:        result.item_lines       || [],
+          subtotal:          result.subtotal !== '' && result.subtotal != null ? String(result.subtotal) : '',
+          vat_rate:          result.vat_rate != null ? String(result.vat_rate) : String(company?.vat_rate ?? 12.5),
+          vat_amount:        result.vat_amount !== '' && result.vat_amount != null ? String(result.vat_amount) : '',
+          total_amount:      result.total_amount !== '' && result.total_amount != null ? String(result.total_amount) : '',
+          payment_method:    normalizePayment(result.payment_method),
+          category:          normalizeCategory(result.category),
+          item_lines:        Array.isArray(result.item_lines) ? result.item_lines : [],
           ai_confidence:     result.ai_confidence    ?? null,
-          ai_missing_fields: result.ai_missing_fields || [],
+          ai_missing_fields: Array.isArray(result.ai_missing_fields) ? result.ai_missing_fields : [],
         }));
-        toast.success('Receipt data extracted!');
-      } catch {
-        toast.error('Could not auto-extract. Please fill in manually.');
+        toast.success('Receipt details filled automatically!');
+      } catch (extractErr) {
+        console.warn('[upload] extract failed:', extractErr);
+        toast.error(formatApiError(extractErr, 'Auto-fill failed. Try a clearer photo or enter fields manually.'));
       } finally {
         setExtracting(false);
         setStep('review');
       }
     } catch (err) {
-      toast.error(formatApiError(err, 'Failed to upload photo'));
+      console.error('[upload] failed:', err);
+      toast.error(formatApiError(err, 'Failed to upload file'));
       setStep('upload');
     } finally {
       setUploading(false);
@@ -86,11 +117,22 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     if (file) processFile(file);
   };
 
-  const handlePickFile = () => {
-    fileInputRef.current?.click();
-  };
+  const fileAccept =
+    'image/*,application/pdf,.heic,.heif,.jpg,.jpeg,.jfif,.png,.gif,.webp,.bmp,.tiff,.tif';
 
   const handleSave = async () => {
+    if (!company?.id) {
+      toast.error('No company loaded. Refresh the page or finish setup.');
+      return;
+    }
+    if (!photoUrl) {
+      toast.error('Upload a file first.');
+      return;
+    }
+    if (!form.total_amount) {
+      toast.error('Total amount is required.');
+      return;
+    }
     setSaving(true);
     try {
       const user = await base44.auth.me();
@@ -100,14 +142,14 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         supplier_name:    form.supplier_name    || undefined,
         supplier_tin:     form.supplier_tin     || undefined,
         receipt_number:   form.receipt_number   || undefined,
-        receipt_date:     form.receipt_date     || undefined,
+        receipt_date:     form.receipt_date     || format(new Date(), 'yyyy-MM-dd'),
         currency:         form.currency         || 'FJD',
         subtotal:         form.subtotal         ? Number(form.subtotal) : undefined,
         vat_rate:         form.vat_rate         ? Number(form.vat_rate) : undefined,
         vat_amount:       form.vat_amount       ? Number(form.vat_amount) : undefined,
         total_amount:     form.total_amount     ? Number(form.total_amount) : undefined,
-        payment_method:   form.payment_method   || undefined,
-        category:         form.category         || undefined,
+        payment_method:   form.payment_method ? normalizePayment(form.payment_method) : undefined,
+        category:         form.category ? normalizeCategory(form.category) : undefined,
         notes:            form.notes            || undefined,
         item_lines:       form.item_lines?.length ? form.item_lines : undefined,
         ai_confidence:    form.ai_confidence    ?? undefined,
@@ -135,7 +177,30 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     return () => window.removeEventListener('popstate', handlePop);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Paste image from clipboard (Ctrl+V) while modal is open
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items?.length) return;
+      for (const item of items) {
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [open, processFile]);
+
   const handleClose = () => {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl('');
     setStep('upload');
     setPhotoUrl('');
     setFileInputKey(k => k + 1);
@@ -169,10 +234,19 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     <>
     {/* File input lives OUTSIDE the Dialog to avoid iOS Safari focus-trap issues */}
     <input
-      key={fileInputKey}
-      ref={fileInputRef}
+      key={`cam-${fileInputKey}`}
+      ref={cameraInputRef}
       type="file"
-      accept="image/*,application/pdf"
+      accept={fileAccept}
+      capture="environment"
+      style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0 }}
+      onChange={handleFileChange}
+    />
+    <input
+      key={`gal-${fileInputKey}`}
+      ref={galleryInputRef}
+      type="file"
+      accept={fileAccept}
       style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0 }}
       onChange={handleFileChange}
     />
@@ -188,15 +262,24 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="p-5">
+          <div className="p-5 space-y-3">
+            <p className="text-xs text-muted-foreground text-center">
+              Works on phone: use camera or gallery. PDFs use free text scan.
+            </p>
             <button
               type="button"
-              onClick={handlePickFile}
-              className="w-full flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/50 active:border-primary transition-colors bg-transparent"
+              onClick={() => cameraInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-4 text-sm font-semibold text-white shadow"
+              style={{ background: 'hsl(var(--accent))' }}
             >
-              <Camera className="w-10 h-10 text-muted-foreground mb-3" />
-              <p className="text-sm font-medium">Take a photo or choose a file</p>
-              <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, PDF</p>
+              <Camera className="w-5 h-5" /> Take photo (camera)
+            </button>
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-4 text-sm font-semibold hover:bg-muted/50"
+            >
+              <ImagePlus className="w-5 h-5" /> Gallery or PDF
             </button>
           </div>
         )}
@@ -205,7 +288,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
           <div className="flex flex-col items-center justify-center py-12 space-y-3 px-5">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
             <p className="text-sm font-medium">
-              {uploading ? 'Uploading photo…' : 'Scanning with AI…'}
+              {uploading ? 'Uploading file…' : extracting ? 'Scanning receipt (free)…' : 'Processing…'}
             </p>
             <p className="text-xs text-muted-foreground">
               {uploading ? 'Please wait' : 'Extracting receipt details, this takes a few seconds'}
@@ -217,15 +300,17 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
           <>
             {/* Scrollable form area */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
-              {photoUrl && (
-                <div className="rounded-lg overflow-hidden border border-border h-24">
-                  <img src={photoUrl} alt="Receipt" className="w-full h-full object-contain bg-muted" />
+              {(localPreviewUrl || photoUrl) && (
+                <div className="rounded-lg overflow-hidden border border-border min-h-24 max-h-48">
+                  <ReceiptMediaPreview url={localPreviewUrl || photoUrl} className="h-48" />
                 </div>
               )}
               {form.ai_confidence != null && (
                 <div className={`rounded-lg px-3 py-2 text-xs flex items-center gap-2 ${form.ai_confidence >= 70 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                   <span>✨ AI extracted · {form.ai_confidence}% confidence</span>
-                  {form.ai_missing_fields?.length > 0 && <span className="ml-auto">Missing: {form.ai_missing_fields.join(', ')}</span>}
+                  {Array.isArray(form.ai_missing_fields) && form.ai_missing_fields.length > 0 && (
+                    <span className="ml-auto">Missing: {form.ai_missing_fields.join(', ')}</span>
+                  )}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-x-3 gap-y-3">

@@ -34,3 +34,6 @@ dist-ssr
 .dev.out.log
 .dev.err.log
 fix-deps.ps1
+scripts/backups/
+scripts/railway-variables-PASTE-IN-RAILWAY.txt
+server/eng.traineddata

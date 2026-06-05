@@ -8,12 +8,20 @@ import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/error.js';
 import { openai, isOpenAIConfigured } from '../lib/openai.js';
 import { getAgentPrompt } from '../lib/agentPrompts.js';
+import { buildSpendingContext } from '../lib/spendingContext.js';
+import { extractReceiptFromPhotoUrl } from '../lib/receiptExtract.js';
 
 const router = Router();
 router.use(requireAuth);
 
 router.get('/status', (_req, res) => {
-  res.json({ configured: isOpenAIConfigured, model: env.OPENAI_MODEL });
+  res.json({
+    configured: true,
+    scan_driver: env.RECEIPT_SCAN_DRIVER,
+    free_ocr: env.RECEIPT_SCAN_DRIVER === 'ocr',
+    openai_available: isOpenAIConfigured,
+    model: env.OPENAI_MODEL,
+  });
 });
 
 function resolveUploadPath(url: string): string | null {
@@ -25,9 +33,23 @@ function resolveUploadPath(url: string): string | null {
   return fs.existsSync(file) ? file : null;
 }
 
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  jfif: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  bmp: 'image/bmp',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+};
+
 function fileToDataUri(filePath: string): string {
   const ext = path.extname(filePath).slice(1).toLowerCase();
-  const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+  const mime = MIME_BY_EXT[ext] || 'image/jpeg';
   const data = fs.readFileSync(filePath).toString('base64');
   return `data:${mime};base64,${data}`;
 }
@@ -47,6 +69,12 @@ const invokeSchema = z.object({
   model: z.string().optional(),
 });
 
+router.post('/extract-receipt', async (req, res) => {
+  const { photo_url } = z.object({ photo_url: z.string().min(1) }).parse(req.body);
+  const result = await extractReceiptFromPhotoUrl(photo_url);
+  res.json(result);
+});
+
 router.post('/invoke-llm', async (req, res) => {
   if (!isOpenAIConfigured || !openai) {
     throw new HttpError(
@@ -64,13 +92,27 @@ router.post('/invoke-llm', async (req, res) => {
   const content: ContentPart[] = [{ type: 'text', text: prompt }];
 
   if (file_urls?.length) {
+    let attached = 0;
     for (const url of file_urls) {
+      if (/\.pdf(\?|$)/i.test(url.split('?')[0])) continue;
       let imageUrl = url;
       if (url.startsWith('/uploads/')) {
         const localPath = resolveUploadPath(url);
-        if (localPath) imageUrl = fileToDataUri(localPath);
+        if (!localPath) {
+          console.warn('[ai] upload file not found:', url);
+          continue;
+        }
+        if (path.extname(localPath).toLowerCase() === '.pdf') continue;
+        imageUrl = fileToDataUri(localPath);
       }
       content.push({ type: 'image_url', image_url: { url: imageUrl } });
+      attached++;
+    }
+    if (attached === 0) {
+      throw new HttpError(
+        400,
+        'Receipt image not found on server. Re-upload the photo and try again.',
+      );
     }
   }
 
@@ -104,14 +146,21 @@ router.post('/invoke-llm', async (req, res) => {
 // Agent conversations (HTTP polling instead of websockets for simplicity)
 // ─────────────────────────────────────────────────────────────────────
 
-const createConversationSchema = z.object({
-  agent_id: z.string().min(1),
-  metadata: z.unknown().optional(),
-});
+const createConversationSchema = z
+  .object({
+    agent_id: z.string().min(1).optional(),
+    agent_name: z.string().min(1).optional(),
+    metadata: z.unknown().optional(),
+  })
+  .refine((b) => Boolean(b.agent_id || b.agent_name), {
+    message: 'agent_id or agent_name required',
+  });
 
 router.post('/conversations', async (req, res) => {
   const user = req.user!;
-  const { agent_id, metadata } = createConversationSchema.parse(req.body);
+  const body = createConversationSchema.parse(req.body);
+  const agent_id = body.agent_id ?? body.agent_name!;
+  const { metadata } = body;
   const conv = await prisma.conversation.create({
     data: {
       userId: user.id,
@@ -174,16 +223,37 @@ router.post('/conversations/:id/messages', async (req, res) => {
   });
 
   // If user message, generate an assistant reply via OpenAI (when configured).
+  if (role === 'user' && !isOpenAIConfigured) {
+    const assistantMessage = await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        role: 'assistant',
+        content:
+          'AI is not configured on this server. Add OPENAI_API_KEY to server/.env and restart the backend.',
+      },
+    });
+    res.status(201).json({
+      user_message: serializeMessage(saved),
+      assistant_message: serializeMessage(assistantMessage),
+    });
+    return;
+  }
+
   if (role === 'user' && isOpenAIConfigured && openai) {
     try {
       const history = conv.messages.map((m) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       }));
+      let systemPrompt = getAgentPrompt(conv.agentId);
+      if (conv.agentId === 'spending_trends') {
+        const ctx = await buildSpendingContext(user.id);
+        systemPrompt += `\n\n--- Company receipt data ---\n${ctx}`;
+      }
       const completion = await openai.chat.completions.create({
         model: env.OPENAI_MODEL,
         messages: [
-          { role: 'system', content: getAgentPrompt(conv.agentId) },
+          { role: 'system', content: systemPrompt },
           ...history,
           { role: 'user', content },
         ],

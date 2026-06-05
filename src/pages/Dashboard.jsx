@@ -19,7 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
 import UsageMeter from '@/components/billing/UsageMeter';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { format, isWithinInterval, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { effectiveReceiptDate, isReceiptInInterval, isChartableReceipt } from '@/lib/receiptDates';
 
 const COLORS = [
   'hsl(178,58%,30%)',
@@ -123,14 +124,11 @@ export default function Dashboard() {
   });
 
   // Filter receipts within selected period
-  const inPeriod = (r) => {
-    if (!r.receipt_date) return false;
-    const d = new Date(r.receipt_date);
-    return isWithinInterval(d, { start: period.start, end: period.end });
-  };
+  const inPeriod = (r) => isReceiptInInterval(r, period.start, period.end);
 
   const periodReceipts = receipts.filter(inPeriod);
   const approvedPeriod = periodReceipts.filter(r => r.status === 'approved');
+  const chartPeriod = periodReceipts.filter(isChartableReceipt);
 
   const totalExpenses = approvedPeriod.reduce((s, r) => s + (r.total_amount || 0), 0);
   const totalVAT      = approvedPeriod.reduce((s, r) => s + (r.vat_amount || 0), 0);
@@ -138,9 +136,9 @@ export default function Dashboard() {
   const approvedCount = approvedPeriod.length;
   const rejectedCount = periodReceipts.filter(r => r.status === 'rejected').length;
 
-  // Top 5 categories (approved only, in period)
+  // Category & supplier charts: approved + pending (uses upload date if receipt date missing)
   const categoryTotals = {};
-  approvedPeriod.forEach(r => {
+  chartPeriod.forEach(r => {
     if (r.category) categoryTotals[r.category] = (categoryTotals[r.category] || 0) + (r.total_amount || 0);
   });
   const topCategories = Object.entries(categoryTotals)
@@ -148,22 +146,20 @@ export default function Dashboard() {
     .slice(0, 5)
     .map(([name, total]) => ({ name: formatCategory(name), total }));
 
-  // Top 5 suppliers (approved only, in period)
   const supplierTotals = {};
-  approvedPeriod.forEach(r => {
+  chartPeriod.forEach(r => {
     if (r.supplier_name) supplierTotals[r.supplier_name] = (supplierTotals[r.supplier_name] || 0) + (r.total_amount || 0);
   });
   const topSuppliers = Object.entries(supplierTotals)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
-  // Last 6 months expense trend (all approved receipts, not filtered by period)
   const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
     const d = subMonths(new Date(), 5 - i);
     const start = startOfMonth(d);
     const end = endOfMonth(d);
     const total = receipts
-      .filter(r => r.status === 'approved' && r.receipt_date && isWithinInterval(new Date(r.receipt_date), { start, end }))
+      .filter(r => isChartableReceipt(r) && isReceiptInInterval(r, start, end))
       .reduce((s, r) => s + (r.total_amount || 0), 0);
     return { month: format(d, 'MMM'), total };
   });
@@ -285,7 +281,7 @@ export default function Dashboard() {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <p className="text-[10px] text-muted-foreground text-center mt-1">Approved receipts only · Current month highlighted in coral</p>
+        <p className="text-[10px] text-muted-foreground text-center mt-1">Approved + pending · uses receipt or upload date · Current month in coral</p>
       </SectionCard>
 
       {/* Top Categories */}
@@ -307,7 +303,7 @@ export default function Dashboard() {
         ) : (
           <div className="py-10 text-center">
             <Waves className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No approved receipts yet</p>
+            <p className="text-sm text-muted-foreground">No receipts in this period yet</p>
           </div>
         )}
       </SectionCard>

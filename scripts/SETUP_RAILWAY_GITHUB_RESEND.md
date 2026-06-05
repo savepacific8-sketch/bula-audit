@@ -15,17 +15,27 @@ Do these in order. The app code is already on GitHub at `savepacific8-sketch/bul
    - **Only select repositories** → add **`bula-audit`**.  
 4. Click **Save**.
 
-### 1B. Install Railway on the **organization** (if repo is under `savepacific8-sketch`)
+### 1B. Only if the repo owner is a **GitHub Organization** (not a personal username)
 
-Your repo is: `https://github.com/savepacific8-sketch/bula-audit`
+Your repo URL: https://github.com/savepacific8-sketch/bula-audit
 
-1. Open (as org owner):  
-   https://github.com/organizations/savepacific8-sketch/settings/installations  
-2. If **Railway** is missing → **Install GitHub App** → search **Railway** → Install.  
-3. Grant access to **`bula-audit`** (or all org repos).  
-4. **Save**.
+**First, open that repo link.** If you also get 404 here, you are logged into the wrong GitHub account — sign out and sign in as the account that owns the repo.
 
-> If Railway still shows **“No repositories found”**, Part 1B was skipped. Public repo alone is not enough.
+**If the repo opens** but this link 404s:
+
+`https://github.com/organizations/savepacific8-sketch/settings/installations`
+
+…then `savepacific8-sketch` is a **personal account**, not an Organization. **Skip 1B** — Step 1A (personal Railway app) is enough.
+
+**If you really have an Organization** named `savepacific8-sketch`:
+
+1. GitHub → your profile picture → **Your organizations** → click the org  
+2. **Settings** → **GitHub Apps** (left) → **Installed GitHub Apps** → **Configure** on Railway  
+3. Grant access to **`bula-audit`** → **Save**
+
+Or install Railway from Railway itself: https://railway.app/new → **Deploy from GitHub repo** → authorize when asked.
+
+> **Do not** rely on a pasted org URL if GitHub shows 404 — use the menu path above instead.
 
 ### 1C. Create or connect the Railway project
 

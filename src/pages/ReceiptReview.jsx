@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MobileSelect } from '@/components/ui/MobileSelect';
 import { toast } from 'sonner';
+import { formatApiError } from '@/lib/apiErrors';
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, Loader2,
   Sparkles, AlertTriangle, RotateCcw, Save
@@ -70,7 +71,7 @@ const statusConfig = {
 export default function ReceiptReview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { company, canApprove } = useCompany();
+  const { company, canApprove, userRole } = useCompany();
 
   const [receipt, setReceipt] = useState(null);
   const [form, setForm] = useState({});
@@ -83,27 +84,30 @@ export default function ReceiptReview() {
 
   useEffect(() => {
     if (!receiptId) { navigate('/receipts'); return; }
-    base44.entities.Receipt.filter({ id: receiptId }).then(([r]) => {
-      if (!r) { navigate('/receipts'); return; }
-      setReceipt(r);
-      setForm({
-        supplier_name:    r.supplier_name    || '',
-        supplier_tin:     r.supplier_tin     || '',
-        receipt_number:   r.receipt_number   || '',
-        receipt_date:     r.receipt_date     || '',
-        currency:         r.currency         || 'FJD',
-        subtotal:         r.subtotal         ?? '',
-        vat_type:         r.vat_type         || 'inclusive',
-        vat_rate:         r.vat_rate         ?? 12.5,
-        vat_amount:       r.vat_amount       ?? '',
-        total_amount:     r.total_amount     ?? '',
-        payment_method:   r.payment_method   || '',
-        category:         r.category         || '',
-        notes:            r.notes            || '',
-      });
-      setLoading(false);
-    });
-  }, [receiptId]);
+    setLoading(true);
+    base44.entities.Receipt.get(receiptId)
+      .then((r) => {
+        if (!r) { navigate('/receipts'); return; }
+        setReceipt(r);
+        setForm({
+          supplier_name:    r.supplier_name    || '',
+          supplier_tin:     r.supplier_tin     || '',
+          receipt_number:   r.receipt_number   || '',
+          receipt_date:     r.receipt_date     || '',
+          currency:         r.currency         || 'FJD',
+          subtotal:         r.subtotal         ?? '',
+          vat_type:         r.vat_type         || 'inclusive',
+          vat_rate:         r.vat_rate         ?? 12.5,
+          vat_amount:       r.vat_amount       ?? '',
+          total_amount:     r.total_amount     ?? '',
+          payment_method:   r.payment_method   || '',
+          category:         r.category         || '',
+          notes:            r.notes            || '',
+        });
+      })
+      .catch(() => navigate('/receipts'))
+      .finally(() => setLoading(false));
+  }, [receiptId, navigate]);
 
   const field = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
@@ -176,11 +180,10 @@ export default function ReceiptReview() {
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
       toast.success(`Receipt ${newStatus}`);
     },
-    onError: (_err, newStatus, _ctx) => {
-      // Roll back the optimistic update
+    onError: (err, _newStatus) => {
       setReceipt(prev => ({ ...prev, status: prev._prevStatus || 'pending' }));
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
-      toast.error('Failed to update status');
+      toast.error(formatApiError(err, 'Failed to update status'));
     },
   });
 
@@ -222,7 +225,7 @@ export default function ReceiptReview() {
     setScanning(false);
   };
 
-  if (loading) {
+  if (loading || !receipt) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -484,6 +487,15 @@ export default function ReceiptReview() {
           )}
         </div>
       </div>
+
+      {receipt.status === 'pending' && !canApprove && (
+        <div className="max-w-2xl mx-auto px-4 pb-2">
+          <p className="text-xs text-muted-foreground text-center rounded-lg border border-border bg-muted/40 px-3 py-2">
+            Approval is for owners and managers only
+            {userRole ? ` (your role: ${userRole})` : ''}. Unpaid/Paid is separate — use payment controls after approval.
+          </p>
+        </div>
+      )}
 
       {/* Sticky Bottom Action Bar */}
       <div

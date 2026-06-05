@@ -6,12 +6,14 @@ const CompanyContext = createContext(null);
 export function CompanyProvider({ children }) {
   const [company, setCompany] = useState(null);
   const [teamMember, setTeamMember] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadContext = async () => {
     try {
       const user = await base44.auth.me();
       if (!user) return;
+      setUserEmail(user.email);
 
       // Find team membership
       const members = await base44.entities.TeamMember.filter({ user_email: user.email, status: 'active' });
@@ -44,23 +46,28 @@ export function CompanyProvider({ children }) {
         // Check if user owns a company
         const ownedCompanies = await base44.entities.Company.filter({ owner_email: user.email });
         if (ownedCompanies.length > 0) {
-          setCompany(ownedCompanies[0]);
-          // Create owner team member record if missing
-          const existingMember = await base44.entities.TeamMember.filter({ 
-            company_id: ownedCompanies[0].id, 
-            user_email: user.email 
+          const co = ownedCompanies[0];
+          setCompany(co);
+          const existingMember = await base44.entities.TeamMember.filter({
+            company_id: co.id,
+            user_email: user.email,
           });
-          if (existingMember.length === 0) {
-            const newMember = await base44.entities.TeamMember.create({
-              company_id: ownedCompanies[0].id,
+          let member = existingMember[0];
+          if (!member) {
+            member = await base44.entities.TeamMember.create({
+              company_id: co.id,
               user_email: user.email,
               user_name: user.full_name,
               role: 'owner',
-              status: 'active'
+              status: 'active',
             });
-            setTeamMember(newMember);
-          } else {
-            setTeamMember(existingMember[0]);
+          }
+          setTeamMember(member);
+          if (!user.data?.current_company_id || user.data.current_company_id !== co.id) {
+            await base44.auth.updateMe({
+              current_company_id: co.id,
+              current_company_role: 'owner',
+            });
           }
         }
         // if no owned company either, company stays null — triggers onboarding
@@ -83,8 +90,14 @@ export function CompanyProvider({ children }) {
     loadContext();
   };
 
-  const userRole = teamMember?.role || null;
-  const canApprove = userRole === 'owner' || userRole === 'manager';
+  const jwtRole = teamMember?.role || null;
+  const userRole =
+    jwtRole ||
+    (company && userEmail === company.owner_email ? 'owner' : null);
+  const canApprove =
+    userRole === 'owner' ||
+    userRole === 'manager' ||
+    (!!company && userEmail === company.owner_email);
   const canUpload = userRole === 'owner' || userRole === 'manager' || userRole === 'staff';
   const canExport = userRole === 'owner' || userRole === 'manager' || userRole === 'accountant';
   const canManageTeam = userRole === 'owner' || userRole === 'manager';

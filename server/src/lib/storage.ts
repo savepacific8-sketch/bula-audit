@@ -44,6 +44,7 @@ class LocalStorage implements Storage {
   }
   async put({ key, body, contentType }: { key: string; body: Buffer; contentType: string }) {
     const filePath = path.join(this.uploadDir, key);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, body);
     return {
       key,

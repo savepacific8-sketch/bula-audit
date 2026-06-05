@@ -355,9 +355,38 @@ router.post('/logout-all', requireAuth, async (req, res) => {
 
 // ── Me ────────────────────────────────────────────────────────────────
 
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
   if (!req.user) throw new HttpError(401, 'Not authenticated');
-  res.json({ user: publicUser(req.user) });
+  let user = req.user;
+
+  if (!user.currentCompanyId) {
+    const member = await prisma.teamMember.findFirst({
+      where: { userEmail: user.email, status: 'active' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (member) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          currentCompanyId: member.companyId,
+          currentCompanyRole: member.role,
+        },
+      });
+    } else {
+      const owned = await prisma.company.findFirst({
+        where: { ownerEmail: user.email },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (owned) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { currentCompanyId: owned.id, currentCompanyRole: 'owner' },
+        });
+      }
+    }
+  }
+
+  res.json({ user: publicUser(user) });
 });
 
 const updateMeSchema = z.object({
@@ -374,6 +403,8 @@ router.patch('/me', requireAuth, async (req, res) => {
   if (!req.user) throw new HttpError(401, 'Not authenticated');
   const data = updateMeSchema.parse(req.body);
 
+  let companyRole: string | undefined = data.current_company_role ?? undefined;
+
   if (data.current_company_id) {
     const member = await prisma.teamMember.findUnique({
       where: {
@@ -383,11 +414,20 @@ router.patch('/me', requireAuth, async (req, res) => {
         },
       },
     });
-    if (!member || member.status !== 'active') {
+    const owned = await prisma.company.findFirst({
+      where: { id: data.current_company_id, ownerEmail: req.user.email },
+      select: { id: true },
+    });
+    if ((!member || member.status !== 'active') && !owned) {
       throw new HttpError(403, 'Not a member of that company');
     }
-    if (data.current_company_role && data.current_company_role !== member.role) {
-      throw new HttpError(403, 'Cannot impersonate a different role');
+    if (member?.status === 'active') {
+      if (data.current_company_role && data.current_company_role !== member.role) {
+        throw new HttpError(403, 'Cannot impersonate a different role');
+      }
+      companyRole = companyRole ?? member.role;
+    } else if (owned) {
+      companyRole = companyRole ?? 'owner';
     }
   }
 
@@ -397,7 +437,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       fullName: data.full_name ?? undefined,
       avatarUrl: data.avatar_url ?? undefined,
       currentCompanyId: data.current_company_id ?? undefined,
-      currentCompanyRole: data.current_company_role ?? undefined,
+      currentCompanyRole: companyRole,
     },
   });
   res.json({ user: publicUser(updated) });

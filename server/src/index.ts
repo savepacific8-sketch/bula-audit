@@ -71,7 +71,22 @@ app.use(
 // ── CORS ────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    // Dev: allow phone/LAN (e.g. http://192.168.x.x:5173). Prod: single CLIENT_ORIGIN.
+    origin:
+      env.NODE_ENV === 'development'
+        ? (origin, cb) => {
+            if (!origin) return cb(null, true);
+            const ok =
+              origin === env.CLIENT_ORIGIN ||
+              /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+              /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+              /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+              /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(origin) ||
+              /^https:\/\/[a-z0-9-]+\.ngrok-free\.app$/.test(origin) ||
+              /^https:\/\/[a-z0-9-]+\.ngrok\.io$/.test(origin);
+            cb(null, ok);
+          }
+        : env.CLIENT_ORIGIN,
     credentials: true,
   }),
 );
@@ -129,8 +144,8 @@ if (isProd) {
 app.use(notFound);
 app.use(errorHandler);
 
-const server = app.listen(env.PORT, () => {
-  console.log(`[server] listening on http://localhost:${env.PORT}`);
+const server = app.listen(env.PORT, '0.0.0.0', () => {
+  console.log(`[server] listening on http://0.0.0.0:${env.PORT} (LAN + localhost)`);
   console.log(`[server] env:        ${env.NODE_ENV}`);
   console.log(`[server] CORS:       ${env.CLIENT_ORIGIN}`);
   console.log(`[server] storage:    ${env.STORAGE_DRIVER}${isS3 ? ` (${env.S3_BUCKET})` : ` (${localUploadDir})`}`);

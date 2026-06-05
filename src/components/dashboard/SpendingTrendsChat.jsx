@@ -3,9 +3,10 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { TrendingUp, Send, Bot, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, Send, Bot, User, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { formatApiError } from '@/lib/apiErrors';
 
 const QUICK_QUESTIONS = [
   'What did we spend most on this month?',
@@ -21,12 +22,25 @@ export default function SpendingTrendsChat() {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [aiReady, setAiReady] = useState(null);
+  const [error, setError] = useState(null);
   const bottomRef = useRef(null);
+  const unsubRef = useRef(null);
+
+  useEffect(() => {
+    base44.agents.getAiStatus?.()
+      .then((s) => setAiReady(Boolean(s?.configured)))
+      .catch(() => setAiReady(false));
+  }, []);
 
   useEffect(() => {
     if (expanded && !initialized) {
       initConversation();
     }
+    return () => {
+      unsubRef.current?.();
+      unsubRef.current = null;
+    };
   }, [expanded]);
 
   useEffect(() => {
@@ -35,34 +49,46 @@ export default function SpendingTrendsChat() {
 
   const initConversation = async () => {
     setLoading(true);
+    setError(null);
     try {
       const conv = await base44.agents.createConversation({
-        agent_name: 'spending_trends',
-        metadata: { name: 'Spending Trends Analysis' }
+        agent_id: 'spending_trends',
+        metadata: { name: 'Spending Trends Analysis' },
       });
       setConversation(conv);
       setInitialized(true);
 
-      base44.agents.subscribeToConversation(conv.id, (data) => {
+      unsubRef.current = base44.agents.subscribeToConversation(conv.id, (data) => {
         setMessages(data.messages || []);
         setLoading(false);
       });
 
       await base44.agents.addMessage(conv, {
         role: 'user',
-        content: 'Give me a brief summary of our company spending trends.'
+        content: 'Give me a brief summary of our company spending trends.',
       });
     } catch (e) {
-      console.error(e);
+      setError(formatApiError(e, 'Could not start AI analyst'));
       setLoading(false);
     }
   };
 
   const sendMessage = async (text) => {
-    if (!conversation || !text.trim() || loading) return;
+    const trimmed = text?.trim();
+    if (!trimmed || loading) return;
+    if (!conversation) {
+      setError('Still starting — try again in a moment.');
+      return;
+    }
     setLoading(true);
-    await base44.agents.addMessage(conversation, { role: 'user', content: text });
-    setInput('');
+    setError(null);
+    try {
+      await base44.agents.addMessage(conversation, { role: 'user', content: trimmed });
+      setInput('');
+    } catch (e) {
+      setError(formatApiError(e, 'Failed to send message'));
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -74,10 +100,9 @@ export default function SpendingTrendsChat() {
 
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-      {/* Header - always visible */}
       <CardHeader
         className="pb-3 pt-4 px-4 cursor-pointer select-none"
-        onClick={() => setExpanded(v => !v)}
+        onClick={() => setExpanded((v) => !v)}
       >
         <CardTitle className="text-sm font-semibold flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -97,7 +122,20 @@ export default function SpendingTrendsChat() {
 
       {expanded && (
         <CardContent className="px-4 pb-4 space-y-3">
-          {/* Messages */}
+          {aiReady === false && (
+            <div className="flex gap-2 items-start rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <p>
+                AI Spending Analyst needs <code className="text-[10px]">OPENAI_API_KEY</code> in{' '}
+                <code className="text-[10px]">server/.env</code>. Receipt photo scan uses free OCR by default.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-destructive font-medium">{error}</p>
+          )}
+
           <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
             {messages.length === 0 && loading && (
               <div className="flex gap-2 items-start">
@@ -117,7 +155,7 @@ export default function SpendingTrendsChat() {
             {messages.map((msg, idx) => {
               const isUser = msg.role === 'user';
               return (
-                <div key={idx} className={cn('flex gap-2 items-start', isUser && 'justify-end')}>
+                <div key={msg.id || idx} className={cn('flex gap-2 items-start', isUser && 'justify-end')}>
                   {!isUser && (
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                       <Bot className="w-3.5 h-3.5 text-primary" />
@@ -170,14 +208,14 @@ export default function SpendingTrendsChat() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Quick questions */}
           {messages.length <= 2 && (
             <div className="flex flex-wrap gap-1.5">
               {QUICK_QUESTIONS.map((q) => (
                 <button
                   key={q}
+                  type="button"
                   onClick={() => sendMessage(q)}
-                  disabled={loading}
+                  disabled={loading || !conversation}
                   className="text-xs px-2.5 py-1 rounded-full border border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
                 >
                   {q}
@@ -186,21 +224,20 @@ export default function SpendingTrendsChat() {
             </div>
           )}
 
-          {/* Input */}
           <div className="flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your spending..."
-              disabled={loading}
+              disabled={loading || !conversation}
               className="text-sm h-8"
             />
             <Button
               size="icon"
               className="h-8 w-8 shrink-0"
               onClick={() => sendMessage(input)}
-              disabled={loading || !input.trim()}
+              disabled={loading || !input.trim() || !conversation}
             >
               <Send className="w-3.5 h-3.5" />
             </Button>

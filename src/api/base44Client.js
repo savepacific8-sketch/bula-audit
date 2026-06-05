@@ -263,6 +263,8 @@ export const base44 = {
         request('POST', '/ai/invoke-llm', {
           prompt, file_urls, response_json_schema, model,
         }),
+      ExtractReceipt: ({ photo_url }) =>
+        request('POST', '/ai/extract-receipt', { photo_url }),
     },
   },
 
@@ -275,25 +277,19 @@ export const base44 = {
       return request('POST', `/ai/conversations/${id}/messages`, { role, content });
     },
     subscribeToConversation: (id, callback) => {
-      let lastTs = '';
       let stopped = false;
       const tick = async () => {
         if (stopped) return;
         try {
-          const q = lastTs ? `?since=${encodeURIComponent(lastTs)}` : '';
-          const data = await request('GET', `/ai/conversations/${id}/messages${q}`);
-          if (data?.messages?.length) {
-            for (const m of data.messages) {
-              callback({ message: m });
-              lastTs = m.created_date;
-            }
-          }
+          const data = await request('GET', `/ai/conversations/${id}/messages`);
+          callback({ messages: data?.messages ?? [] });
         } catch { /* polling errors swallowed */ }
       };
       const interval = setInterval(tick, 2500);
       tick();
       return () => { stopped = true; clearInterval(interval); };
     },
+    getAiStatus: () => request('GET', '/ai/status'),
   },
 
   users: {

@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/error.js';
-import { isAdmin, requireCompanyRole } from '../lib/permissions.js';
+import { isAdmin, requireCompanyRole, userHasCompanyRole } from '../lib/permissions.js';
 import { serializeReceiptForApi } from '../lib/mediaUrls.js';
 import { audit } from '../lib/audit.js';
 
@@ -98,8 +98,20 @@ router.get('/', async (req, res) => {
     if (typeof company_id !== 'string') {
       return res.json([]);
     }
-    const role = user.currentCompanyId === company_id ? user.currentCompanyRole : null;
-    if (!role) throw new HttpError(403, 'Not a member of this company');
+    const allowed = await userHasCompanyRole(user, company_id, [
+      'owner',
+      'manager',
+      'staff',
+      'accountant',
+    ]);
+    if (!allowed) throw new HttpError(403, 'Not a member of this company');
+    const member = await prisma.teamMember.findUnique({
+      where: { companyId_userEmail: { companyId: company_id, userEmail: user.email } },
+    });
+    const role =
+      user.currentCompanyId === company_id
+        ? user.currentCompanyRole
+        : member?.role;
     if (role === 'staff') where.uploadedBy = user.email;
   }
 
@@ -125,9 +137,23 @@ router.get('/:id', async (req, res) => {
   res.json(await serializeReceiptForApi(receipt));
 });
 
+function normalizeReceiptPayload(data: z.infer<typeof upsertSchema>) {
+  const out = { ...data };
+  if (out.category && !categories.includes(out.category as (typeof categories)[number])) {
+    out.category = 'other';
+  }
+  if (
+    out.payment_method &&
+    !paymentMethods.includes(out.payment_method as (typeof paymentMethods)[number])
+  ) {
+    out.payment_method = 'other';
+  }
+  return out;
+}
+
 router.post('/', async (req, res) => {
   const user = req.user!;
-  const data = upsertSchema.parse(req.body);
+  const data = normalizeReceiptPayload(upsertSchema.parse(req.body));
   if (!data.company_id) throw new HttpError(400, 'company_id required');
   if (!data.photo_url) throw new HttpError(400, 'photo_url required');
   if (!isAdmin(user)) {
@@ -187,8 +213,16 @@ router.patch('/:id', async (req, res) => {
   }
 
   const data = upsertSchema.partial().parse(req.body);
-  const updated = await prisma.receipt.update({
-    where: { id: receipt.id },
+
+  if (
+    data.status &&
+    (data.status === 'approved' || data.status === 'rejected') &&
+    !isAdmin(user)
+  ) {
+    await requireCompanyRole(user, receipt.companyId, ['owner', 'manager']);
+  }
+
+  const updated = await prisma.receipt.update({    where: { id: receipt.id },
     data: {
       photoUrl: data.photo_url ?? undefined,
       documentUrl: data.document_url ?? undefined,

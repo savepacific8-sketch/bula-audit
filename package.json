@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host",
     "dev:server": "npm --prefix server run dev",
     "build": "vite build",
     "lint": "eslint . --quiet",

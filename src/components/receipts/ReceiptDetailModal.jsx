@@ -11,6 +11,8 @@ import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
+import { isPdfUrl } from '@/lib/receiptMedia';
+import ReceiptMediaPreview from '@/components/receipts/ReceiptMediaPreview';
 
 const statusConfig = {
   pending: { label: 'Pending', icon: Clock, className: 'bg-amber-100 text-amber-700' },
@@ -139,8 +141,8 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
         </DialogHeader>
 
         {receipt.photo_url && (
-          <div className="rounded-xl overflow-hidden border border-border">
-            <img src={receipt.photo_url} alt="Receipt" className="w-full max-h-56 object-contain bg-muted" />
+          <div className="rounded-xl overflow-hidden border border-border max-h-72">
+            <ReceiptMediaPreview url={receipt.photo_url} className="max-h-72" />
           </div>
         )}
 
@@ -151,7 +153,7 @@ export default function ReceiptDetailModal({ receipt, open, onClose, onUpdate })
               <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <Sparkles className="w-3.5 h-3.5" /> AI Extraction
               </div>
-              {receipt.photo_url && (
+              {receipt.photo_url && !isPdfUrl(receipt.photo_url) && (
                 <Button size="sm" variant="outline" onClick={handleRescan} disabled={rescanning} className="gap-1.5 text-xs h-7">
                   {rescanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                   Re-scan

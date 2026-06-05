@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Upload, Shield,
+  LayoutDashboard, Receipt, FileText, Users, Building2, LogOut, Shield,
   X, CreditCard, ShieldCheck, Settings as SettingsIcon, ScrollText, UserCircle,
-  MailWarning, Plus,
+  MailWarning,
 } from 'lucide-react';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
 import { useAuth } from '@/lib/AuthContext';
@@ -60,18 +60,6 @@ function Sidebar({ filteredNav, filteredAccount, company, canUpload, user, onNav
         {filteredNav.map(item => (
           <NavLink key={item.path} item={item} active={location.pathname === item.path} onNavigate={onNavigate} />
         ))}
-
-        {canUpload && (
-          <Link
-            to="/upload"
-            onClick={onNavigate}
-            style={{ userSelect: 'none', WebkitUserSelect: 'none', background: 'hsl(var(--accent))' }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white transition-all mt-4 shadow-md"
-          >
-            <Upload className="w-4 h-4 shrink-0" />
-            Upload Receipt
-          </Link>
-        )}
 
         {filteredAccount.length > 0 && (
           <>
@@ -316,24 +304,6 @@ export default function AppLayout() {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* Floating Upload Action (mobile, when allowed) */}
-      {canUpload && !mobileDrawerOpen && (
-        <Link
-          to="/upload"
-          className="md:hidden fixed z-30 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
-          style={{
-            background: 'hsl(var(--accent))',
-            width: 56,
-            height: 56,
-            bottom: `calc(${isRoot ? '72px' : '20px'} + env(safe-area-inset-bottom, 0px))`,
-            right: '20px',
-          }}
-          aria-label="Upload receipt"
-        >
-          <Plus className="w-6 h-6 text-white" />
-        </Link>
-      )}
 
       <BottomTabBar />
     </div>

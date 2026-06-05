@@ -14,6 +14,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true, // listen on LAN so phones on same Wi‑Fi can open the dev URL
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true },
       '/uploads': { target: API_TARGET, changeOrigin: true },

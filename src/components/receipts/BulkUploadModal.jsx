@@ -69,9 +69,9 @@ export default function BulkUploadModal({ open, onClose, onSuccess }) {
         continue;
       }
 
-      // 2. AI extraction
+      // 2. AI extraction (photos only — PDFs save with empty fields for manual edit)
       updateFile(item.id, { status: 'scanning' });
-      let extracted;
+      let extracted = {};
       try {
         extracted = await extractReceiptData(fileUrl);
       } catch {

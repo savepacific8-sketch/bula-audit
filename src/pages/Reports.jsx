@@ -17,14 +17,14 @@ import { Download, FileText } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import PageHeader from '@/components/layout/PageHeader';
+import { isReceiptInRange, isChartableReceipt } from '@/lib/receiptDates';
 
 const COLORS = ['hsl(174,62%,32%)', 'hsl(36,80%,56%)', 'hsl(210,60%,50%)', 'hsl(150,50%,45%)', 'hsl(0,72%,51%)', 'hsl(280,60%,50%)', 'hsl(50,70%,50%)'];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
 function inRange(r, from, to) {
-  if (!r.receipt_date) return false;
-  const d = new Date(r.receipt_date);
-  return d >= from && d <= to;
+  return isReceiptInRange(r, from, to);
 }
 
 function downloadCSV(rows, filename) {
@@ -123,27 +123,32 @@ export default function Reports() {
   const totalVAT = approved.reduce((s, r) => s + (r.vat_amount || 0), 0);
   const totalSubtotal = approved.reduce((s, r) => s + (r.subtotal || 0), 0);
 
-  // Category data
+  const chartable = useMemo(
+    () => allInRange.filter(isChartableReceipt),
+    [allInRange],
+  );
+
+  // Category data (approved + pending so uploads show in charts)
   const categoryData = useMemo(() => {
     const map = {};
-    approved.forEach(r => {
+    chartable.forEach(r => {
       const cat = r.category || 'other';
       if (!map[cat]) map[cat] = { count: 0, total: 0, vat: 0 };
       map[cat].count++; map[cat].total += r.total_amount || 0; map[cat].vat += r.vat_amount || 0;
     });
     return Object.entries(map).map(([name, d]) => ({ name: formatCategory(name), ...d })).sort((a, b) => b.total - a.total);
-  }, [approved]);
+  }, [chartable]);
 
   // Supplier data
   const supplierData = useMemo(() => {
     const map = {};
-    approved.forEach(r => {
+    chartable.forEach(r => {
       const sup = r.supplier_name || 'Unknown';
       if (!map[sup]) map[sup] = { count: 0, total: 0, vat: 0, tin: r.supplier_tin || '' };
       map[sup].count++; map[sup].total += r.total_amount || 0; map[sup].vat += r.vat_amount || 0;
     });
     return Object.entries(map).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.total - a.total);
-  }, [approved]);
+  }, [chartable]);
 
   // Staff data (all statuses so we can see upload activity)
   const staffData = useMemo(() => {

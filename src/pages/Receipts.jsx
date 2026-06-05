@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { formatApiError } from '@/lib/apiErrors';
 import { useSubscription } from '@/hooks/useSubscription';
 import UsageMeter from '@/components/billing/UsageMeter';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PullToRefresh from '@/components/layout/PullToRefresh';
 
 export default function Receipts() {
-  const { company, canUpload } = useCompany();
+  const { company, canUpload, canApprove } = useCompany();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { uploadAllowed, totalUsage, receiptLimit, receiptsRemaining, isFreePlan, limitReached } = useSubscription();
@@ -35,6 +37,22 @@ export default function Receipts() {
   });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['receipts'] });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ receipt, newStatus }) => {
+      const user = await base44.auth.me();
+      return base44.entities.Receipt.update(receipt.id, {
+        status: newStatus,
+        reviewed_by: user.email,
+        reviewed_date: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      toast.success('Receipt updated');
+    },
+    onError: (err) => toast.error(formatApiError(err, 'Failed to update receipt')),
+  });
 
   const filtered = receipts
     .filter(r => {
@@ -141,7 +159,15 @@ export default function Receipts() {
       ) : (
         <div className="space-y-3">
           {filtered.map(r => (
-            <ReceiptCard key={r.id} receipt={r} onClick={() => navigate(`/receipt-review?id=${r.id}`)} />
+            <ReceiptCard
+              key={r.id}
+              receipt={r}
+              canApprove={canApprove}
+              statusUpdating={statusMutation.isPending}
+              onApprove={(rec) => statusMutation.mutate({ receipt: rec, newStatus: 'approved' })}
+              onReject={(rec) => statusMutation.mutate({ receipt: rec, newStatus: 'rejected' })}
+              onClick={() => navigate(`/receipt-review?id=${r.id}`)}
+            />
           ))}
         </div>
       )}
