@@ -10,7 +10,7 @@ builder = "NIXPACKS"
 buildCommand = "npm install && npm run build && cd server && npm install && DATABASE_URL=mysql://build:build@127.0.0.1:3306/build npx prisma generate && npm run build"
 
 [deploy]
-startCommand = "cd server && npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"
+startCommand = "cd server && chmod +x scripts/railway-start.sh && bash scripts/railway-start.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/api/health"

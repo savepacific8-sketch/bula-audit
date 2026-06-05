@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { applyRailwayEnvDefaults } from './lib/railwayEnv.js';
+
+applyRailwayEnvDefaults();
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
