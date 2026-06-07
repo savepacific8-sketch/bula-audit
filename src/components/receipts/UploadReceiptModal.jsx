@@ -8,7 +8,7 @@ import { MobileSelect } from '@/components/ui/MobileSelect';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { useCompany } from '@/lib/useCompanyContext.jsx';
-import { Camera, ImagePlus, Loader2 } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { extractReceiptData } from '@/lib/extractReceipt';
