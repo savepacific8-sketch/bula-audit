@@ -68,7 +68,7 @@ export default function UploadReceiptModal({ open, onClose, onSuccess }) {
     setUploading(true);
     setStep('extract');
     try {
-      const uploaded = await base44.integrations.Core.UploadFile({ file });
+      const uploaded = await base44.integrations.Core.UploadFile({ file, companyId: company.id });
       const file_url = uploaded?.file_url;
       if (!file_url) {
         throw new Error('Upload succeeded but no file URL was returned');

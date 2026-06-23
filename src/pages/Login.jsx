@@ -6,19 +6,29 @@ import BulaLogo from '@/components/layout/BulaLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
+
+const TURNSTILE_ENABLED = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [challengeToken, setChallengeToken] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [turnstileToken, setTurnstileToken] = useState(null);
   const fromRaw = new URLSearchParams(location.search).get('from') || '/';
-  const from = fromRaw.startsWith('/') && !fromRaw.includes('[object') ? fromRaw : '/';
+  const from =
+    typeof fromRaw === 'string' &&
+    fromRaw.startsWith('/') &&
+    !fromRaw.includes('[object')
+      ? fromRaw
+      : '/';
 
   useEffect(() => {
     if (isAuthenticated) navigate(from, { replace: true });
@@ -27,16 +37,100 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the security check below.');
+      return;
+    }
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email.trim(), password);
+      const result = await login(email.trim(), password, turnstileToken);
+      if (result?.requires2fa) {
+        setChallengeToken(result.challengeToken);
+        return;
+      }
       window.location.href = from;
     } catch (err) {
-      setError(err?.message || 'Invalid email or password');
+      setError(err?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
+
+  const onSubmit2fa = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await base44.auth.loginWithTwoFa(challengeToken, code.trim());
+      window.location.href = from;
+    } catch (err) {
+      setError(err?.message || 'Invalid code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (challengeToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50 p-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <ShieldCheck className="w-7 h-7 text-primary" />
+            </div>
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground font-poppins">Two-factor sign-in</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={onSubmit2fa} className="space-y-4 bg-card rounded-2xl border border-border p-6 shadow-sm">
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg bg-destructive/10 text-destructive px-3 py-2 text-xs">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <Label htmlFor="code">Authenticator code</Label>
+              <Input
+                id="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456 or backup code"
+                disabled={loading}
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Lost your device? Paste one of your backup codes (XXXX-XXXXXX).
+              </p>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading || !code}>
+              {loading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying...</>
+              ) : (
+                'Verify'
+              )}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => { setChallengeToken(null); setCode(''); setError(null); }}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-primary"
+            >
+              Back to password
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50 p-4">
@@ -85,8 +179,17 @@ export default function Login() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</> : 'Sign in'}
+          <TurnstileWidget
+            onToken={setTurnstileToken}
+            onError={(msg) => setError(msg)}
+          />
+
+          <Button type="submit" className="w-full" disabled={loading || (TURNSTILE_ENABLED && !turnstileToken)}>
+            {loading ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
+            ) : (
+              'Sign in'
+            )}
           </Button>
 
           <div className="text-right">
@@ -103,20 +206,26 @@ export default function Login() {
               <span className="bg-card px-2 text-muted-foreground">or</span>
             </div>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => base44.auth.loginWithProvider('google', from)}
-          >
-            Continue with Google
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                const url = base44.auth.getGoogleLoginUrl(window.location.origin + from);
+                if (url && url !== '#') window.location.href = url;
+              }}
+            >
+              Continue with Google
+            </Button>
+          </div>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-primary font-medium hover:underline">Sign up</Link>
+          <Link to="/signup" className="text-primary font-medium hover:underline">
+            Sign up
+          </Link>
         </p>
 
         <p className="text-center text-[11px] text-muted-foreground/70">

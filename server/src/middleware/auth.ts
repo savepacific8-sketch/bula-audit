@@ -28,7 +28,7 @@ export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
 }
 
-function getTokenFromRequest(req: Request): string | null {
+export function getTokenFromRequest(req: Request): string | null {
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) return header.slice(7);
   const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.token;

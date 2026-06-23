@@ -98,7 +98,7 @@ function UploadReceiptInner() {
     setPreviewSrc(isPdf ? null : objectUrl);
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file, companyId: company.id });
       setPhotoUrl(file_url);
       setStep('preview');
     } catch (err) {
@@ -247,7 +247,7 @@ function UploadReceiptInner() {
     setDocumentName(file.name);
     setDocumentUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file, companyId: company.id });
       setDocumentUrl(file_url);
       toast.success('Document attached!');
     } catch (err) {

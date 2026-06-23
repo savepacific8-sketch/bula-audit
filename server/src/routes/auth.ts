@@ -145,10 +145,12 @@ router.post('/signup', authLimiter, async (req, res) => {
 const loginSchema = z.object({
   email: z.string().email().toLowerCase(),
   password: z.string().min(1).max(128),
+  turnstile_token: z.string().nullish(),
 });
 
 router.post('/login', authLimiter, async (req, res) => {
-  const { email, password } = loginSchema.parse(req.body);
+  const { email, password, turnstile_token } = loginSchema.parse(req.body);
+  await verifyTurnstileToken(turnstile_token, req.ip ?? undefined);
   const user = await prisma.user.findUnique({ where: { email } });
 
   const genericFail = new HttpError(401, 'Invalid credentials');

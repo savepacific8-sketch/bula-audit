@@ -1,0 +1,29 @@
+# Supabase local dev (optional)
+# Install CLI: npm i -g supabase
+# Link: supabase link --project-ref YOUR_PROJECT_REF
+
+project_id = "bula-audit"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/**", "https://*.vercel.app/**"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[storage]
+enabled = true

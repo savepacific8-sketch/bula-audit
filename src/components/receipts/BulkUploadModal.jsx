@@ -62,7 +62,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }) {
       updateFile(item.id, { status: 'uploading' });
       let fileUrl;
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: item.file });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: item.file, companyId: company.id });
         fileUrl = file_url;
       } catch {
         updateFile(item.id, { status: 'error', error: 'Upload failed' });

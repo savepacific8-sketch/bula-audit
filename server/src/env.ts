@@ -55,6 +55,10 @@ const schema = z.object({
   // Cloudflare Turnstile (optional — when set, signup + password-reset require CAPTCHA)
   TURNSTILE_SECRET_KEY: z.string().default(''),
 
+  // Supabase (optional — enables OCR API for Supabase Auth users)
+  SUPABASE_URL: z.string().default(''),
+  SUPABASE_ANON_KEY: z.string().default(''),
+
   // Sentry error tracking (optional)
   SENTRY_DSN: z.string().default(''),
 });
@@ -64,6 +68,14 @@ const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
   console.error('Invalid environment variables:');
   console.error(parsed.error.flatten().fieldErrors);
+  if (parsed.error.flatten().fieldErrors.DATABASE_URL) {
+    console.error('');
+    console.error('Railway fix (APP service -> Variables):');
+    console.error('  1. Delete empty DATABASE_URL if present');
+    console.error('  2. New Variable -> Add Reference -> MySQL -> MYSQL_URL');
+    console.error('  3. Name the variable: DATABASE_URL');
+    console.error('  Or paste: DATABASE_URL=${{MySQL.MYSQL_URL}}');
+  }
   process.exit(1);
 }
 

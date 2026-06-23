@@ -15,7 +15,10 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { env } from './env.js';
+import { syncDbSchema } from './lib/syncDbSchema.js';
 import { errorHandler, notFound } from './middleware/error.js';
+
+await syncDbSchema();
 import { generalLimiter, authLimiter, aiLimiter } from './middleware/rateLimit.js';
 import { localUploadDir, isS3 } from './lib/storage.js';
 import healthRouter from './routes/health.js';

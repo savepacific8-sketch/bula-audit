@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { prisma } from '../prisma.js';
 import { env } from '../env.js';
 import { requireAuth } from '../middleware/auth.js';
+import { requireAuthOrSupabase } from '../middleware/supabaseAuth.js';
 import { HttpError } from '../middleware/error.js';
 import { openai, isOpenAIConfigured } from '../lib/openai.js';
 import { getAgentPrompt } from '../lib/agentPrompts.js';
@@ -12,7 +13,6 @@ import { buildSpendingContext } from '../lib/spendingContext.js';
 import { extractReceiptFromPhotoUrl } from '../lib/receiptExtract.js';
 
 const router = Router();
-router.use(requireAuth);
 
 router.get('/status', (_req, res) => {
   res.json({
@@ -23,6 +23,14 @@ router.get('/status', (_req, res) => {
     model: env.OPENAI_MODEL,
   });
 });
+
+router.post('/extract-receipt', requireAuthOrSupabase, async (req, res) => {
+  const { photo_url } = z.object({ photo_url: z.string().min(1) }).parse(req.body);
+  const result = await extractReceiptFromPhotoUrl(photo_url);
+  res.json(result);
+});
+
+router.use(requireAuth);
 
 function resolveUploadPath(url: string): string | null {
   if (!url.startsWith('/uploads/')) return null;
@@ -67,12 +75,6 @@ const invokeSchema = z.object({
   file_urls: z.array(z.string()).optional(),
   response_json_schema: z.unknown().optional(),
   model: z.string().optional(),
-});
-
-router.post('/extract-receipt', async (req, res) => {
-  const { photo_url } = z.object({ photo_url: z.string().min(1) }).parse(req.body);
-  const result = await extractReceiptFromPhotoUrl(photo_url);
-  res.json(result);
 });
 
 router.post('/invoke-llm', async (req, res) => {
