@@ -1,10 +1,10 @@
 // BULA AUDIT - local API client.
-// Same `base44.*` surface as before; talks to our Express backend at /api/*.
-// Handles short-lived access tokens via /api/auth/refresh on 401.
+// When VITE_SUPABASE_URL is set, routes through Supabase (see supabaseClient.js).
+
+import { isSupabaseMode } from '@/lib/supabase.js';
+import { supabaseApi } from '@/api/supabaseClient.js';
 
 // In dev, Vite proxies /api -> http://localhost:4000 (see vite.config.js).
-// In prod (Cloudflare Pages), the frontend domain is different from the API
-// domain, so use the full URL from VITE_API_URL build-time env var.
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')}/api`
   : '/api';
@@ -136,7 +136,7 @@ function entityClient(resource) {
   };
 }
 
-export const base44 = {
+const expressApi = {
   auth: {
     me: async () => {
       const { user } = await request('GET', '/auth/me');
@@ -296,3 +296,5 @@ export const base44 = {
     inviteUser: async (_email, _role) => ({ ok: true }),
   },
 };
+
+export const base44 = isSupabaseMode() ? supabaseApi : expressApi;
