@@ -12,6 +12,7 @@
     "dev:server": "npm --prefix server run dev",
     "verify": "node scripts/verify-supabase-setup.mjs",
     "storage": "node scripts/ensure-storage-buckets.mjs",
+    "setup-storage": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-storage.ps1",
     "finish": "powershell -ExecutionPolicy Bypass -File ./scripts/finish-production.ps1",
     "build": "vite build",
     "lint": "eslint . --quiet",

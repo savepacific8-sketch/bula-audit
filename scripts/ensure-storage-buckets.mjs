@@ -72,10 +72,14 @@ for (const bucket of buckets) {
     headers,
     body: JSON.stringify(bucket),
   });
-  if (res.ok || res.status === 409) {
-    console.log(`OK: bucket "${bucket.id}"`);
+  const text = await res.text();
+  const duplicate =
+    res.status === 409 ||
+    text.includes('"Duplicate"') ||
+    text.includes('"statusCode":"409"');
+  if (res.ok || duplicate) {
+    console.log(`OK: bucket "${bucket.id}"${duplicate && !res.ok ? ' (already exists)' : ''}`);
   } else {
-    const text = await res.text();
     console.error(`FAIL: bucket "${bucket.id}" — HTTP ${res.status} ${text.slice(0, 120)}`);
     ok = false;
   }

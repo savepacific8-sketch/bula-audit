@@ -22,6 +22,7 @@ function loadEnv() {
 const env = loadEnv();
 const url = env.VITE_SUPABASE_URL?.trim();
 const key = env.VITE_SUPABASE_ANON_KEY?.trim();
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
 const results = [];
 
@@ -91,15 +92,40 @@ try {
   ok('Data API / team_members', false, e.message);
 }
 
-// Storage buckets
+// Storage buckets (private buckets are not visible to anon key — use service role if set)
 try {
+  const storageKey = serviceKey || key;
   const storageRes = await fetch(`${url}/storage/v1/bucket`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    headers: { apikey: storageKey, Authorization: `Bearer ${storageKey}` },
   });
   const buckets = storageRes.ok ? await storageRes.json() : [];
   const names = Array.isArray(buckets) ? buckets.map((b) => b.name ?? b.id) : [];
   ok('Storage API reachable', storageRes.status === 200, `HTTP ${storageRes.status}`);
-  ok('Bucket "receipts" exists', names.includes('receipts'), names.join(', ') || 'none');
+
+  let receiptsExists = names.includes('receipts');
+  let paymentProofsExists = names.includes('payment-proofs');
+  if (!receiptsExists) {
+    const one = await fetch(`${url}/storage/v1/bucket/receipts`, {
+      headers: { apikey: storageKey, Authorization: `Bearer ${storageKey}` },
+    });
+    receiptsExists = one.status === 200;
+  }
+  if (!paymentProofsExists) {
+    const one = await fetch(`${url}/storage/v1/bucket/payment-proofs`, {
+      headers: { apikey: storageKey, Authorization: `Bearer ${storageKey}` },
+    });
+    paymentProofsExists = one.status === 200;
+  }
+  ok(
+    'Bucket "receipts" exists',
+    receiptsExists,
+    receiptsExists ? 'ok' : names.join(', ') || 'not found — run npm run setup-storage',
+  );
+  ok(
+    'Bucket "payment-proofs" exists',
+    paymentProofsExists,
+    paymentProofsExists ? 'ok' : 'not found',
+  );
 } catch (e) {
   ok('Storage API', false, e.message);
 }
