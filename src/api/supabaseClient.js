@@ -181,19 +181,31 @@ function buildEntityClient(table, serializer, defaultOrder = 'created_at', extra
 }
 
 async function profileToUser(profile, authUser) {
-  if (!profile) return null;
+  if (profile) {
+    return {
+      id: profile.id,
+      email: profile.email || authUser?.email,
+      full_name: profile.full_name,
+      avatar_url: profile.avatar_url,
+      role: profile.role,
+      email_verified: Boolean(authUser?.email_confirmed_at),
+      email_delivery: 'inbox',
+      data: {
+        current_company_id: profile.current_company_id,
+        current_company_role: profile.current_company_role,
+      },
+    };
+  }
+  if (!authUser) return null;
   return {
-    id: profile.id,
-    email: profile.email || authUser?.email,
-    full_name: profile.full_name,
-    avatar_url: profile.avatar_url,
-    role: profile.role,
-    email_verified: Boolean(authUser?.email_confirmed_at),
+    id: authUser.id,
+    email: authUser.email,
+    full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name,
+    avatar_url: authUser.user_metadata?.avatar_url,
+    role: 'user',
+    email_verified: Boolean(authUser.email_confirmed_at),
     email_delivery: 'inbox',
-    data: {
-      current_company_id: profile.current_company_id,
-      current_company_role: profile.current_company_role,
-    },
+    data: {},
   };
 }
 
@@ -250,8 +262,8 @@ export const supabaseApi = {
     },
     updateMe: async (data) => {
       const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error('Not logged in. Please refresh and sign in again.');
+      const authUser = session?.user;
+      if (!authUser) throw new Error('Not logged in. Please refresh and sign in again.');
       const patch = {};
       if (data.current_company_id !== undefined) patch.current_company_id = data.current_company_id;
       if (data.current_company_role !== undefined) patch.current_company_role = data.current_company_role;
@@ -259,20 +271,23 @@ export const supabaseApi = {
       const { data: profile, error } = await supabase
         .from('profiles')
         .update(patch)
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .select('*')
         .single();
       if (error) throw new Error(error.message);
-      return profileToUser(profile, user);
+      return profileToUser(profile, authUser);
     },
     login: async (email, password) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw new Error(error.message);
+      if (!data.session) {
+        throw new Error('Sign-in failed. Confirm your email first, then try again.');
+      }
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
-        .single();
+        .maybeSingle();
       return profileToUser(profile, data.user);
     },
     signup: async (email, password, full_name) => {

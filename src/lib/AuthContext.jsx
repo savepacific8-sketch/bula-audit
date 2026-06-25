@@ -47,6 +47,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
+      if (!currentUser) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthError(null);
+        return;
+      }
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
@@ -55,6 +61,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       if (err?.status !== 401) {
         setAuthError({ type: 'unknown', message: err?.message || 'Auth failed' });
+      } else {
+        setAuthError(null);
       }
     } finally {
       setIsLoadingAuth(false);
@@ -65,24 +73,43 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (isSupabaseMode() && supabase) {
       let cancelled = false;
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (cancelled) return;
-        if (!session) {
-          setIsLoadingAuth(false);
-          setAuthChecked(true);
-          setIsAuthenticated(false);
-          return;
+
+      const init = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (cancelled) return;
+          if (!session) {
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            setIsAuthenticated(false);
+            return;
+          }
+          await checkUserAuth();
+        } catch {
+          if (!cancelled) {
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            setIsAuthenticated(false);
+          }
         }
-        checkUserAuth();
-      });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!session) {
+      };
+
+      void init();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (cancelled) return;
+        if (event === 'SIGNED_OUT') {
           setUser(null);
           setIsAuthenticated(false);
-        } else if (authChecked) {
-          checkUserAuth();
+          setAuthChecked(true);
+          setIsLoadingAuth(false);
+          return;
+        }
+        if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          void checkUserAuth();
         }
       });
+
       return () => {
         cancelled = true;
         subscription.unsubscribe();

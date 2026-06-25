@@ -1,11 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+const SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || '')
+  .trim()
+  .replace(/^["']|["']$/g, '');
 
 /**
  * Cloudflare Turnstile CAPTCHA. Hidden when VITE_TURNSTILE_SITE_KEY is unset (local dev).
+ * Pass `resetKey` from parent and increment it after a failed login to get a fresh token.
  */
-export default function TurnstileWidget({ onToken, onError }) {
+export default function TurnstileWidget({ onToken, onError, resetKey = 0 }) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const onTokenRef = useRef(onToken);
@@ -24,8 +27,10 @@ export default function TurnstileWidget({ onToken, onError }) {
       }
       widgetIdRef.current = null;
     }
+    onTokenRef.current?.(null);
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: SITE_KEY,
+      appearance: 'always',
       callback: (token) => onTokenRef.current?.(token),
       'expired-callback': () => onTokenRef.current?.(null),
       'error-callback': () => {
@@ -71,9 +76,9 @@ export default function TurnstileWidget({ onToken, onError }) {
         }
       }
     };
-  }, [renderWidget]);
+  }, [renderWidget, resetKey]);
 
   if (!SITE_KEY) return null;
 
   return <div ref={containerRef} className="flex justify-center min-h-[65px]" />;
-}
+};

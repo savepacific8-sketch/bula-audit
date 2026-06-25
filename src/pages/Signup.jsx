@@ -21,6 +21,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true });
@@ -47,6 +48,8 @@ export default function Signup() {
       } else {
         setError(formatApiError(err, 'Sign-up failed'));
       }
+      setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -117,6 +120,8 @@ export default function Signup() {
           </div>
 
           <TurnstileWidget
+            key={turnstileResetKey}
+            resetKey={turnstileResetKey}
             onToken={setTurnstileToken}
             onError={(msg) => setError(msg)}
           />

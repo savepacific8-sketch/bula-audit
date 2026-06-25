@@ -22,6 +22,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const fromRaw = new URLSearchParams(location.search).get('from') || '/';
   const from =
     typeof fromRaw === 'string' &&
@@ -48,9 +49,11 @@ export default function Login() {
         setChallengeToken(result.challengeToken);
         return;
       }
-      window.location.href = from;
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err?.message || 'Invalid credentials');
+      setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -62,7 +65,7 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.loginWithTwoFa(challengeToken, code.trim());
-      window.location.href = from;
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err?.message || 'Invalid code');
     } finally {
@@ -180,6 +183,8 @@ export default function Login() {
           </div>
 
           <TurnstileWidget
+            key={turnstileResetKey}
+            resetKey={turnstileResetKey}
             onToken={setTurnstileToken}
             onError={(msg) => setError(msg)}
           />

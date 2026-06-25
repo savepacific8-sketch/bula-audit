@@ -35,6 +35,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState(null);
 
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   const [resetUrl, setResetUrl] = useState(null);
 
@@ -73,6 +74,8 @@ export default function ForgotPassword() {
     } catch (err) {
 
       setError(formatApiError(err, 'Could not send reset link'));
+      setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
 
     } finally {
 
@@ -201,11 +204,10 @@ export default function ForgotPassword() {
 
 
             <TurnstileWidget
-
+              key={turnstileResetKey}
+              resetKey={turnstileResetKey}
               onToken={setTurnstileToken}
-
               onError={(msg) => setError(msg)}
-
             />
 
 
