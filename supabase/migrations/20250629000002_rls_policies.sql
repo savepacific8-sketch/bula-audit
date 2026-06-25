@@ -53,7 +53,10 @@ alter table public.payment_proofs enable row level security;
 
 -- ── Profiles ────────────────────────────────────────────────────────────
 create policy profiles_select_own on public.profiles
-  for select using (id = (select auth.uid()) or public.is_app_admin());
+  for select using (id = (select auth.uid()));
+
+create policy profiles_admin_select on public.profiles
+  for select using ((select public.is_app_admin()));
 
 create policy profiles_update_own on public.profiles
   for update using (id = (select auth.uid()))

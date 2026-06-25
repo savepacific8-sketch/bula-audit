@@ -43,9 +43,10 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const checkUserAuth = useCallback(async () => {
+  const checkUserAuth = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
     try {
-      setIsLoadingAuth(true);
+      if (!silent) setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       if (!currentUser) {
         setUser(null);
@@ -65,7 +66,7 @@ export const AuthProvider = ({ children }) => {
         setAuthError(null);
       }
     } finally {
-      setIsLoadingAuth(false);
+      if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
     }
   }, []);
@@ -105,8 +106,9 @@ export const AuthProvider = ({ children }) => {
           setIsLoadingAuth(false);
           return;
         }
-        if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-          void checkUserAuth();
+        // SIGNED_IN is handled by login() — re-checking here caused a login loop.
+        if (session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          void checkUserAuth({ silent: true });
         }
       });
 
@@ -131,6 +133,8 @@ export const AuthProvider = ({ children }) => {
     setUser(u);
     setIsAuthenticated(true);
     setAuthError(null);
+    setAuthChecked(true);
+    setIsLoadingAuth(false);
     return u;
   }, []);
 

@@ -210,18 +210,20 @@ async function profileToUser(profile, authUser) {
 }
 
 async function fetchProfile() {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  if (!user) {
-    if (sessionError) console.warn('[auth] getSession:', sessionError.message);
-    return { user: null, profile: null };
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) console.warn('[auth] getUser:', userError.message);
+  if (!user) return { user: null, profile: null };
+
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    console.warn('[auth] profile fetch:', error.message);
+    return { user, profile: null };
+  }
   return { user, profile };
 }
 
@@ -283,11 +285,12 @@ export const supabaseApi = {
       if (!data.session) {
         throw new Error('Sign-in failed. Confirm your email first, then try again.');
       }
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .maybeSingle();
+      if (profileError) console.warn('[auth] login profile fetch:', profileError.message);
       return profileToUser(profile, data.user);
     },
     signup: async (email, password, full_name) => {
