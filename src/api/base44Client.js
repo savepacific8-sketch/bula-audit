@@ -199,6 +199,10 @@ const expressApi = {
       const q = fromUrl ? `?from_url=${encodeURIComponent(fromUrl)}` : '';
       return `${API_BASE}/auth/google${q}`;
     },
+    loginWithGoogle: async (fromUrl) => {
+      const q = fromUrl ? `?from_url=${encodeURIComponent(fromUrl)}` : '';
+      window.location.href = `${API_BASE}/auth/google${q}`;
+    },
     googleStatus: () => request('GET', '/auth/google/status'),
 
     requestPasswordReset: (email, turnstile_token) => {

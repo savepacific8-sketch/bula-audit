@@ -211,9 +211,14 @@ export default function Login() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => {
-                const url = base44.auth.getGoogleLoginUrl(window.location.origin + from);
-                if (url && url !== '#') window.location.href = url;
+              disabled={loading}
+              onClick={async () => {
+                try {
+                  setError(null);
+                  await base44.auth.loginWithGoogle(window.location.origin + from);
+                } catch (err) {
+                  setError(err?.message || 'Google sign-in failed');
+                }
               }}
             >
               Continue with Google

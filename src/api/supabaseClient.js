@@ -316,8 +316,21 @@ export const supabaseApi = {
       void supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
+      }).then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        if (data?.url) window.location.href = data.url;
       });
       return '#';
+    },
+    loginWithGoogle: async (fromUrl) => {
+      const redirectTo = fromUrl || `${window.location.origin}/`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.url) window.location.href = data.url;
+      else throw new Error('Google sign-in is not configured. Enable Google in Supabase → Authentication → Providers.');
     },
     googleStatus: async () => ({ configured: true }),
     requestPasswordReset: async (email) => {

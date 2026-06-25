@@ -8,7 +8,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select email from auth.users where id = auth.uid()
+  select email from auth.users where id = (select auth.uid())
 $$;
 
 -- Helper: company IDs the user can access
@@ -35,7 +35,7 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+    where id = (select auth.uid()) and role = 'admin'
   )
 $$;
 
@@ -53,11 +53,11 @@ alter table public.payment_proofs enable row level security;
 
 -- ── Profiles ────────────────────────────────────────────────────────────
 create policy profiles_select_own on public.profiles
-  for select using (id = auth.uid() or public.is_app_admin());
+  for select using (id = (select auth.uid()) or public.is_app_admin());
 
 create policy profiles_update_own on public.profiles
-  for update using (id = auth.uid())
-  with check (id = auth.uid());
+  for update using (id = (select auth.uid()))
+  with check (id = (select auth.uid()));
 
 -- ── Companies ─────────────────────────────────────────────────────────
 create policy companies_select on public.companies
@@ -161,15 +161,15 @@ create policy payment_proofs_all on public.payment_proofs
 
 -- ── Conversations & messages ────────────────────────────────────────────
 create policy conversations_own on public.conversations
-  for all using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  for all using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create policy messages_own on public.messages
   for all using (
-    conversation_id in (select id from public.conversations where user_id = auth.uid())
+    conversation_id in (select id from public.conversations where user_id = (select auth.uid()))
   )
   with check (
-    conversation_id in (select id from public.conversations where user_id = auth.uid())
+    conversation_id in (select id from public.conversations where user_id = (select auth.uid()))
   );
 
 -- ── Audit logs (read for company members; insert via service role) ──────
@@ -182,5 +182,5 @@ create policy audit_logs_select on public.audit_logs
 
 -- ── Backup codes ────────────────────────────────────────────────────────
 create policy backup_codes_own on public.backup_codes
-  for all using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  for all using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
