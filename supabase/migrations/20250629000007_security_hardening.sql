@@ -16,18 +16,18 @@ $$;
 
 revoke all on function public.set_updated_at() from public, anon, authenticated;
 
--- ── 2. RLS helpers: not callable via PostgREST /rpc (still used in policies) ─
-revoke all on function public.current_user_email() from public, anon, authenticated;
-revoke all on function public.accessible_company_ids() from public, anon, authenticated;
-revoke all on function public.is_app_admin() from public, anon, authenticated;
-revoke all on function public.user_owns_company(text) from public, anon, authenticated;
-revoke all on function public.user_has_team_role(text, text[]) from public, anon, authenticated;
+-- ── 2. RLS helpers: block anon RPC; authenticated needs EXECUTE for RLS policies ─
+revoke all on function public.current_user_email() from public, anon;
+revoke all on function public.accessible_company_ids() from public, anon;
+revoke all on function public.is_app_admin() from public, anon;
+revoke all on function public.user_owns_company(text) from public, anon;
+revoke all on function public.user_has_team_role(text, text[]) from public, anon;
 
-grant execute on function public.current_user_email() to service_role;
-grant execute on function public.accessible_company_ids() to service_role;
-grant execute on function public.is_app_admin() to service_role;
-grant execute on function public.user_owns_company(text) to service_role;
-grant execute on function public.user_has_team_role(text, text[]) to service_role;
+grant execute on function public.current_user_email() to authenticated, service_role;
+grant execute on function public.accessible_company_ids() to authenticated, service_role;
+grant execute on function public.is_app_admin() to authenticated, service_role;
+grant execute on function public.user_owns_company(text) to authenticated, service_role;
+grant execute on function public.user_has_team_role(text, text[]) to authenticated, service_role;
 
 -- ── 3. Trigger-only functions: block direct RPC ─────────────────────────
 revoke all on function public.handle_new_user() from public, anon, authenticated;
